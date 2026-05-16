@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:    
+  create-book-api:
+    build: .
+    container_name: create-book-api
+    ports:
+      - "8003:8003"
+    volumes:
+      - .:/app         
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: create-book-frontend 
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8003
+    depends_on:
+      - create-book-api

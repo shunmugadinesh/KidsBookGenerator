@@ -1,0 +1,30 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and outputs
+*.log
+task_outputs/
+
+# Local scratchpads and experiments
+.ipynb_checkpoints/
+multi_agent_crewai/
+
+# IDE files
+.vscode/
+.idea/
+
+# Project-specific unnecessary files
+z_workouts/
+temp/
+static/
+App_bkp.jsx
+*bkp.jsx
