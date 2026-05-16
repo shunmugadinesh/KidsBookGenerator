@@ -1,0 +1,24 @@
+Create a bright, colorful, high-quality preschool-style {habit_title} chart on one A4 sheet in a {layout_text}.
+
+Character Consistency (CRITICAL):
+The SAME child must appear in EVERY single frame. The child is a 3-year-old boy with a warm golden-brown skin tone, soft black curly hair, and big expressive dark eyes. He has cute chubby cheeks and a joyful toddler expression.
+He MUST wear the exact same outfit in all frames: an oversized bright red T-shirt and matching red training shorts.
+
+Illustration Style:
+Cute ultra-realistic 3D Pixar-style preschool illustration. Bright pastel colors, thick clean outlines, soft studio lighting, HD printable quality. White spacing between frames. Child-friendly educational poster style.
+
+Scenes to Include (Each scene must have its own detailed setting, props, and pastel background):
+{scenes}
+(Ensure each scene description explicitly details the realistic props, cozy soft pastel background colors, and the text overlay instruction, e.g., "A 3-year-old boy... sits on a bright red potty chair in a cozy bathroom. The background is a soft pastel pink with a small mirror. Text overlay at the bottom: 'Time for Potty!'")
+
+Important Guidelines:
+- Each scene MUST contain a clear, bold text overlay at the bottom with the short 3-4 word educational phrase for that scene.
+- Each scene MUST have a soft, pastel-colored background that fits the setting (e.g., a warm bathroom, a bright bedroom) and realistic props to make the scene detailed and immersive.
+- Each scene panel MUST have a matching soft-colored border around it.
+- Only the child's expression and angle should vary in each scene. The face, hair, and clothing must remain completely identical.
+- Keep everything wholesome and toddler-safe. No nudity. No body exposure. No explicit visuals.
+- Use cute symbols (stars, sparkles, happy emojis) instead of graphic details.
+- Make it positive, encouraging, and celebration-based!
+
+Negative Prompt:
+ugly, deformed, extra fingers, watermarks, multiple children in one frame, different clothes, different hair, changing faces, realistic photo, scary, creepy, cluttered background.

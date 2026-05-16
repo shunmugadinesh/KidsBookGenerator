@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, Sparkles, BookOpen, Download, AlertCircle, Loader2, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Image as ImageIcon, Sparkles, BookOpen, Download, AlertCircle, Loader2 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -14,7 +14,7 @@ const BOOK_PROMPTS = {
   "G": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nstanding next to a tiny cute cartoon giraffe, stretching up on tiptoes trying to reach the giraffe's neck for a hug, both looking adorable.\n\nLetter \"G\" for Giraffe. Centered full-body or 3/4 body composition, clean soft pastel background with subtle giraffe-themed color wash, single large glowing letter \"G\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Giraffe\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
   "H": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nwearing a comically oversized magical wizard hat covered in stars and moons, hat slightly tilted, arms out for balance, giggling expression.\n\nLetter \"H\" for Hat. Centered full-body or 3/4 body composition, clean soft pastel background with subtle hat-themed color wash, single large glowing letter \"H\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Hat\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
   "I": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nholding a towering 3-scoop cartoon ice cream cone with colorful scoops (strawberry, vanilla, chocolate), a tiny bit dripping, eyes wide with joy.\n\nLetter \"I\" for Ice cream. Centered full-body or 3/4 body composition, clean soft pastel background with subtle ice cream-themed color wash, single large glowing letter \"I\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Ice cream\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "J": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\npeeking curiously into a glowing mason jar full of tiny fireflies, soft golden light illuminating their face with wonder, both hands around the jar.\n\nLetter \"J\" for Jar. Centered full-body or 3/4 body composition, clean soft pastel background with subtle jar-themed color wash, single large glowing letter \"J\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Jar\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
+  "J": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\peeking curiously into a glowing mason jar full of tiny fireflies, soft golden light illuminating their face with wonder, both hands around the jar.\n\nLetter \"J\" for Jar. Centered full-body or 3/4 body composition, clean soft pastel background with subtle jar-themed color wash, single large glowing letter \"J\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Jar\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
   "K": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nrunning joyfully with a large diamond-shaped kite soaring high above, string in both hands, hair and clothes blowing in breeze, blue sky behind.\n\nLetter \"K\" for Kite. Centered full-body or 3/4 body composition, clean soft pastel background with subtle kite-themed color wash, single large glowing letter \"K\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Kite\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
   "L": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nmaking the funniest sour face after biting into a bright cartoon lemon, eyes scrunched, shoulders raised, lemon held dramatically in one hand.\n\nLetter \"L\" for Lemon. Centered full-body or 3/4 body composition, clean soft pastel background with subtle lemon-themed color wash, single large glowing letter \"L\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Lemon\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
   "M": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nlying on their back in soft grass, reaching up both arms toward a giant glowing cartoon moon in a starry purple night sky, looking magical and peaceful.\n\nLetter \"M\" for Moon. Centered full-body or 3/4 body composition, clean soft pastel background with subtle moon-themed color wash, single large glowing letter \"M\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Moon\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
@@ -37,17 +37,53 @@ const LETTERS = Object.keys(BOOK_PROMPTS);
 
 export default function App() {
   const [referenceImage, setReferenceImage] = useState(null);
+  const [appMode, setAppMode] = useState('book'); // 'book' or 'habit'
+  
+  // Model Selectors (Common)
+  const [selectedModel, setSelectedModel] = useState('pollinations');
+  const [habitTextModel, setHabitTextModel] = useState('ollama');
+
+  // Unified Error and Progress states
+  const [error, setError] = useState(null);
+  const [allProgress, setAllProgress] = useState('');
+  const fileInputRef = useRef(null);
+
+  // Alphabet Book Module States
   const [selectedLetter, setSelectedLetter] = useState('A');
   const [generatedImages, setGeneratedImages] = useState({});
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState(null);
-  const fileInputRef = useRef(null);
-  const [selectedModel, setSelectedModel] = useState('pollinations');
-  const [editablePrompt, setEditablePrompt] = useState('');
-  const [promptLoaded, setPromptLoaded] = useState(false);
-  const [generatingAll, setGeneratingAll] = useState(false);
-  const [allProgress, setAllProgress] = useState('');
   const [modelUsed, setModelUsed] = useState({});
+  const [editablePrompt, setEditablePrompt] = useState('');
+  const [generatingAll, setGeneratingAll] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Automatically parsed story lines for Alphabet Book
+  const [bookStories, setBookStories] = useState(() => {
+    const stories = {};
+    Object.keys(BOOK_PROMPTS).forEach(letter => {
+      const labelMatch = BOOK_PROMPTS[letter].match(/Letter "[A-Z]" for ([A-Za-z\s]+)\./i);
+      const label = labelMatch ? labelMatch[1] : letter;
+      stories[letter] = `${letter} is for ${label}. Rithvin is happy playing!`;
+    });
+    return stories;
+  });
+  
+  // Custom book prompts (so user edits to letters persist)
+  const [customBookPrompts, setCustomBookPrompts] = useState({ ...BOOK_PROMPTS });
+
+  // Habit Chart Module States
+  const [habitTitle, setHabitTitle] = useState('Potty Training');
+  const [habitTotalScenes, setHabitTotalScenes] = useState(4);
+  const [habitTotalPages, setHabitTotalPages] = useState(4);
+  const [habitPrompts, setHabitPrompts] = useState({});
+  const [selectedHabitPage, setSelectedHabitPage] = useState('Page 1');
+  const [habitGeneratedImages, setHabitGeneratedImages] = useState({});
+  const [habitModelUsed, setHabitModelUsed] = useState({});
+  const [habitStoryTexts, setHabitStoryTexts] = useState({});
+  const [habitEditablePrompt, setHabitEditablePrompt] = useState('');
+  const [isGeneratingHabitPlan, setIsGeneratingHabitPlan] = useState(false);
+  const [isGeneratingHabitImage, setIsGeneratingHabitImage] = useState(false);
+  const [generatingAllHabits, setGeneratingAllHabits] = useState(false);
+  const [habitPlanProgress, setHabitPlanProgress] = useState({ done: 0, total: 0 });
 
   const MODEL_LABELS = {
     pollinations: 'Pollinations AI',
@@ -67,16 +103,61 @@ export default function App() {
     }
   };
 
-  const handleShowPrompt = () => {
-    setEditablePrompt(BOOK_PROMPTS[selectedLetter]);
-    setPromptLoaded(true);
+  const isBook = appMode === 'book';
+
+  // Active Key (e.g. "A" or "Page 1")
+  const activePageKey = isBook ? selectedLetter : selectedHabitPage;
+
+  // Active Maps
+  const activeGeneratedImages = isBook ? generatedImages : habitGeneratedImages;
+  const activeModelUsed = isBook ? modelUsed : habitModelUsed;
+  const activeStories = isBook ? bookStories : habitStoryTexts;
+  
+  // Active Prompt and prompt editor sync
+  const activePromptText = isBook ? editablePrompt : habitEditablePrompt;
+
+  // Unified page list
+  const pagesList = isBook ? LETTERS : Object.keys(habitPrompts).sort((a, b) => {
+    const numA = parseInt(a.split(' ')[1]) || 0;
+    const numB = parseInt(b.split(' ')[1]) || 0;
+    return numA - numB;
+  });
+
+  // Active generating indicators
+  const isGeneratingActiveImage = isBook ? isGenerating : isGeneratingHabitImage;
+  const isGeneratingAllActive = isBook ? generatingAll : generatingAllHabits;
+
+  // Automatically load page prompt whenever page, mode, or dynamic prompts change
+  useEffect(() => {
+    if (isBook) {
+      setEditablePrompt(customBookPrompts[selectedLetter] || '');
+    } else {
+      const pageData = habitPrompts[selectedHabitPage];
+      const p = typeof pageData === 'object' ? pageData.prompt : pageData;
+      setHabitEditablePrompt(p || '');
+    }
+  }, [selectedLetter, selectedHabitPage, appMode, customBookPrompts, habitPrompts]);
+
+  const handlePromptChange = (val) => {
+    if (isBook) {
+      setEditablePrompt(val);
+      setCustomBookPrompts(prev => ({ ...prev, [selectedLetter]: val }));
+    } else {
+      setHabitEditablePrompt(val);
+      setHabitPrompts(prev => {
+        const pageData = prev[selectedHabitPage];
+        if (typeof pageData === 'object') {
+          return { ...prev, [selectedHabitPage]: { ...pageData, prompt: val } };
+        }
+        return { ...prev, [selectedHabitPage]: val };
+      });
+    }
   };
 
-  const handleGenerate = async (letter = selectedLetter, prompt = null) => {
-    setIsGenerating(true);
+  const handleGenerateImage = async (pageKey = activePageKey, promptText = activePromptText) => {
+    const isGeneratingSetter = isBook ? setIsGenerating : setIsGeneratingHabitImage;
+    isGeneratingSetter(true);
     setError(null);
-    const promptText = prompt || (promptLoaded ? editablePrompt : BOOK_PROMPTS[letter]);
-
     try {
       const response = await fetch('/generate-image', {
         method: 'POST',
@@ -90,55 +171,227 @@ export default function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Generation failed");
 
-      setGeneratedImages(prev => ({ ...prev, [letter]: data.image }));
-      setModelUsed(prev => ({ ...prev, [letter]: selectedModel }));
+      if (isBook) {
+        setGeneratedImages(prev => ({ ...prev, [pageKey]: data.image }));
+        setModelUsed(prev => ({ ...prev, [pageKey]: selectedModel }));
+      } else {
+        setHabitGeneratedImages(prev => ({ ...prev, [pageKey]: data.image }));
+        setHabitModelUsed(prev => ({ ...prev, [pageKey]: selectedModel }));
+      }
     } catch (err) {
-      setError("Failed to generate image. " + err.message);
+      setError(`Failed to generate image for ${pageKey}. ${err.message}`);
     } finally {
-      setIsGenerating(false);
+      isGeneratingSetter(false);
     }
   };
 
   const handleGenerateAll = async () => {
-    setGeneratingAll(true);
+    const isGeneratingAllSetter = isBook ? setGeneratingAll : setGeneratingAllHabits;
+    isGeneratingAllSetter(true);
     setError(null);
-    for (let i = 0; i < LETTERS.length; i++) {
-      const letter = LETTERS[i];
-      setAllProgress(`Generating ${letter} (${i + 1}/${LETTERS.length})...`);
-      setSelectedLetter(letter);
+
+    for (let i = 0; i < pagesList.length; i++) {
+      const pageKey = pagesList[i];
+      setAllProgress(`Generating ${pageKey} (${i + 1}/${pagesList.length})...`);
+      
+      if (isBook) {
+        setSelectedLetter(pageKey);
+      } else {
+        setSelectedHabitPage(pageKey);
+      }
+
+      const promptToUse = isBook 
+        ? customBookPrompts[pageKey] 
+        : (typeof habitPrompts[pageKey] === 'object' ? habitPrompts[pageKey].prompt : habitPrompts[pageKey]);
+
       try {
-        await handleGenerateOne(letter);
+        await handleGenerateImage(pageKey, promptToUse);
       } catch (err) {
-        console.error(`Failed ${letter}:`, err);
+        console.error(`Failed bulk generation for ${pageKey}:`, err);
       }
     }
+    isGeneratingAllSetter(false);
     setAllProgress('');
-    setGeneratingAll(false);
   };
 
-  const handleGenerateOne = async (letter) => {
-    const promptText = BOOK_PROMPTS[letter];
-    const response = await fetch('/generate-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: promptText, image: referenceImage, model: selectedModel })
+  const bakePage = (page, imgSrc, storyText, titleText) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const bannerHeight = Math.round(img.height * 0.18); // 18% of image height for text banner
+          const canvasW = img.width;
+          const canvasH = img.height + bannerHeight;
+
+          const canvas = document.createElement('canvas');
+          canvas.width = canvasW;
+          canvas.height = canvasH;
+          const ctx = canvas.getContext('2d');
+
+          // Draw the original image
+          ctx.drawImage(img, 0, 0, canvasW, img.height);
+
+          // Draw white banner at bottom
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, img.height, canvasW, bannerHeight);
+
+          // Draw a thin indigo separator line
+          ctx.fillStyle = '#c7d2fe'; // indigo-200
+          ctx.fillRect(0, img.height, canvasW, 3);
+
+          // Draw story text centred in the banner
+          const fontSize = Math.max(24, Math.round(bannerHeight * 0.28));
+          ctx.fillStyle = '#1e293b'; // slate-800
+          ctx.font = `bold ${fontSize}px Georgia, serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          // Word-wrap the story text to fit canvas width
+          const words = storyText.split(' ');
+          const maxWidth = canvasW * 0.88;
+          let lines = [];
+          let current = '';
+          for (const word of words) {
+            const test = current ? `${current} ${word}` : word;
+            if (ctx.measureText(test).width > maxWidth && current) {
+              lines.push(current);
+              current = word;
+            } else {
+              current = test;
+            }
+          }
+          if (current) lines.push(current);
+
+          const lineH = fontSize * 1.4;
+          const totalTextH = lines.length * lineH;
+          const startY = img.height + (bannerHeight - totalTextH) / 2 + fontSize / 2;
+          lines.forEach((line, i) => {
+            ctx.fillText(line, canvasW / 2, startY + i * lineH);
+          });
+
+          // Convert canvas to Blob
+          canvas.toBlob((blob) => {
+            resolve(blob);
+          }, 'image/png');
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = (e) => reject(e);
+      img.src = imgSrc;
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Generation failed");
-    setGeneratedImages(prev => ({ ...prev, [letter]: data.image }));
-    setModelUsed(prev => ({ ...prev, [letter]: selectedModel }));
+  };
+
+  const handleDownloadPage = async (pageKey = activePageKey) => {
+    const imgSrc = activeGeneratedImages[pageKey];
+    const storyText = activeStories[pageKey] || '';
+    if (!imgSrc) return;
+
+    try {
+      const blob = await bakePage(pageKey, imgSrc, storyText, isBook ? 'Book' : habitTitle);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const downloadName = isBook ? `Letter_${pageKey}.png` : `${habitTitle || 'Habit'}_${pageKey}.png`;
+      a.download = downloadName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download page:", err);
+    }
   };
 
   const handleDownloadAll = async () => {
     const zip = new JSZip();
-    const folder = zip.folder('ABCD_Book_Pages');
-    Object.entries(generatedImages).forEach(([letter, imgData]) => {
-      // Strip the data:image/...;base64, prefix
-      const base64 = imgData.split(',')[1];
-      folder.file(`Page_${letter}.png`, base64, { base64: true });
+    const folderName = isBook ? 'ABCD_Book_Pages' : `${habitTitle || 'Habit'}_Pages`;
+    const folder = zip.folder(folderName);
+    
+    // Get list of pages that have generated images
+    const generatedPages = pagesList.filter(pageKey => activeGeneratedImages[pageKey]);
+    if (generatedPages.length === 0) return;
+
+    const bakePromises = generatedPages.map(async (pageKey) => {
+      const imgSrc = activeGeneratedImages[pageKey];
+      const storyText = activeStories[pageKey] || '';
+      const blob = await bakePage(pageKey, imgSrc, storyText, isBook ? 'Book' : habitTitle);
+      return { pageKey, blob };
     });
-    const blob = await zip.generateAsync({ type: 'blob' });
-    saveAs(blob, 'ABCD_Book_Pages.zip');
+
+    try {
+      const results = await Promise.all(bakePromises);
+      results.forEach(({ pageKey, blob }) => {
+        const fileName = isBook ? `Letter_${pageKey}.png` : `${habitTitle || 'Habit'}_${pageKey}.png`;
+        folder.file(fileName, blob);
+      });
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      saveAs(zipBlob, `${folderName}.zip`);
+    } catch (err) {
+      console.error("Failed to download all pages:", err);
+    }
+  };
+
+  const handleGenerateHabitChart = async () => {
+    setIsGeneratingHabitPlan(true);
+    setHabitPrompts({});
+    setHabitStoryTexts({});
+    setHabitEditablePrompt('');
+    setHabitPlanProgress({ done: 0, total: 0 });
+    setError(null);
+    let firstPageSet = false;
+    try {
+      const response = await fetch('/generate-habit-chart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: habitTitle,
+          total_scenes: parseInt(habitTotalScenes),
+          total_pages: parseInt(habitTotalPages),
+          text_model: habitTextModel
+        })
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Generation failed');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete last chunk
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg;
+          try { msg = JSON.parse(line); } catch { continue; }
+
+          if (msg.type === 'meta') {
+            setHabitPlanProgress({ done: 0, total: msg.total });
+          } else if (msg.type === 'page') {
+            const page = msg.page;
+            const pageData = msg.data;
+            setHabitPrompts(prev => ({ ...prev, [page]: pageData }));
+            setHabitStoryTexts(prev => ({ ...prev, [page]: pageData.story || '' }));
+            setHabitPlanProgress(prev => ({ ...prev, done: prev.done + 1 }));
+            if (!firstPageSet) {
+              firstPageSet = true;
+              setSelectedHabitPage(page);
+              setHabitEditablePrompt(pageData.prompt || '');
+            }
+          } else if (msg.type === 'error') {
+            throw new Error(msg.detail || 'Stream error');
+          }
+        }
+      }
+    } catch (err) {
+      setError('Failed to generate habit plan. ' + err.message);
+    } finally {
+      setIsGeneratingHabitPlan(false);
+    }
   };
 
   return (
@@ -151,7 +404,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-800 tracking-tight">Kids Book Generator</h1>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">A-Z Automation Studio</p>
+            <p className="text-xs text-slate-500 font-medium tracking-wider">AI Automation Studio</p>
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -164,7 +417,29 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden">
 
         {/* Left Sidebar - Controls */}
-        <div className="w-72 bg-white border-r border-slate-200 flex flex-col" style={{height:'calc(100vh - 57px)'}}>
+        <div className="w-72 bg-white border-r border-slate-200 flex flex-col" style={{ height: 'calc(100vh - 57px)' }}>
+
+          {/* Generator Mode Selection */}
+          <div className="p-4 border-b border-slate-100">
+            <h2 className="text-xs font-semibold text-slate-800 mb-2 flex items-center gap-2">
+              <Sparkles className="w-3 h-3 text-slate-400" />
+              Generator Mode
+            </h2>
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+              <button
+                onClick={() => setAppMode('book')}
+                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${appMode === 'book' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Alphabet Book
+              </button>
+              <button
+                onClick={() => setAppMode('habit')}
+                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${appMode === 'habit' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Habit Chart
+              </button>
+            </div>
+          </div>
 
           {/* Image Upload Section */}
           <div className="p-4 border-b border-slate-100">
@@ -199,7 +474,7 @@ export default function App() {
           <div className="p-4 border-b border-slate-100">
             <h2 className="text-xs font-semibold text-slate-800 mb-2 flex items-center gap-2">
               <Sparkles className="w-3 h-3 text-slate-400" />
-              Model
+              Image Model
             </h2>
             <select
               value={selectedModel}
@@ -212,76 +487,191 @@ export default function App() {
             </select>
           </div>
 
-          {/* Letter Navigation */}
-          <div className="p-4 border-b border-slate-100 flex-1 overflow-y-auto">
-            <h2 className="text-xs font-semibold text-slate-800 mb-2 flex items-center gap-2">
-              <BookOpen className="w-3 h-3 text-slate-400" />
-              2. Select Page
-            </h2>
-            <div className="grid grid-cols-7 gap-1.5">
-              {LETTERS.map(letter => (
-                <button
-                  key={letter}
-                  onClick={() => { setSelectedLetter(letter); setPromptLoaded(false); }}
-                  className={`relative p-1.5 rounded-lg text-center font-bold text-sm transition-all
-                    ${selectedLetter === letter
-                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-600 ring-offset-1'
-                      : generatedImages[letter]
-                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
-                  `}
-                >
-                  {letter}
-                </button>
-              ))}
-            </div>
-            <div className="mt-2 text-xs text-slate-400 text-center">
-              {Object.keys(generatedImages).length}/{LETTERS.length} pages generated
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="p-4 space-y-2">
-            <button
-              onClick={handleGenerateAll}
-              disabled={isGenerating || generatingAll}
-              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all
-                ${generatingAll ? 'bg-amber-400 text-white cursor-wait' : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md'}`}
-            >
-              {generatingAll ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> {allProgress}</>
-              ) : (
-                <><Sparkles className="w-4 h-4" /> Generate All Pages</>
-              )}
-            </button>
-            {Object.keys(generatedImages).length > 0 && (
-              <button
-                onClick={handleDownloadAll}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm bg-emerald-500 hover:bg-emerald-600 text-white shadow-md transition-all"
+          {/* Text Model Selection (Only for Habit Chart) */}
+          {appMode === 'habit' && (
+            <div className="p-4 border-b border-slate-100">
+              <h2 className="text-xs font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-slate-400" />
+                Text Model
+              </h2>
+              <select
+                value={habitTextModel}
+                onChange={(e) => setHabitTextModel(e.target.value)}
+                className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <Download className="w-4 h-4" /> Download All ({Object.keys(generatedImages).length})
-              </button>
+                <option value="ollama">Ollama (Local Qwen3)</option>
+                <option value="openrouter">OpenRouter (Cloud Free)</option>
+              </select>
+            </div>
+          )}
+
+          {/* Module-Specific Controls & Page Navigators */}
+          <div className="p-4 border-b border-slate-100 flex-1 overflow-y-auto">
+            {isBook ? (
+              <>
+                <h2 className="text-xs font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                  <BookOpen className="w-3 h-3 text-slate-400" />
+                  2. Select Letter Page
+                </h2>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {LETTERS.map(letter => (
+                    <button
+                      key={letter}
+                      onClick={() => { setSelectedLetter(letter); }}
+                      className={`relative p-1.5 rounded-lg text-center font-bold text-sm transition-all
+                        ${selectedLetter === letter
+                          ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-600 ring-offset-1'
+                          : generatedImages[letter]
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                      `}
+                    >
+                      {letter}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 text-xs text-slate-400 text-center">
+                  {Object.keys(generatedImages).length}/{LETTERS.length} pages generated
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xs font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                  <Sparkles className="w-3 h-3 text-slate-400" />
+                  2. Habit Details
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Chart Title</label>
+                    <input
+                      type="text"
+                      value={habitTitle}
+                      onChange={(e) => setHabitTitle(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="e.g. Potty Training"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Total Scenes</label>
+                      <input
+                        type="number"
+                        min="1" max="16"
+                        value={habitTotalScenes}
+                        onChange={(e) => setHabitTotalScenes(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Total Pages</label>
+                      <input
+                        type="number"
+                        min="1" max={habitTotalScenes}
+                        value={habitTotalPages}
+                        onChange={(e) => setHabitTotalPages(Math.max(1, Math.min(habitTotalScenes, parseInt(e.target.value) || 1)))}
+                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleGenerateHabitChart}
+                    disabled={isGeneratingHabitPlan}
+                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all
+                      ${isGeneratingHabitPlan ? 'bg-indigo-400 text-white cursor-wait' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg'}`}
+                  >
+                    {isGeneratingHabitPlan ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />{' '}
+                        {habitPlanProgress.total === 0
+                          ? 'Analyzing...'
+                          : `Pages ready: ${habitPlanProgress.done} / ${habitPlanProgress.total}`}
+                      </>
+                    ) : (
+                      <><Sparkles className="w-4 h-4" /> Generate Chart Plan</>
+                    )}
+                  </button>
+                </div>
+
+                {Object.keys(habitPrompts).length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-slate-100">
+                    <h3 className="text-xs font-semibold text-slate-800 mb-2">3. Select Page</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.keys(habitPrompts)
+                        .sort((a, b) => {
+                          const numA = parseInt(a.split(' ')[1]) || 0;
+                          const numB = parseInt(b.split(' ')[1]) || 0;
+                          return numA - numB;
+                        })
+                        .map(page => (
+                          <button
+                            key={page}
+                            onClick={() => { setSelectedHabitPage(page); }}
+                            className={`relative p-2 rounded-lg text-center font-bold text-xs transition-all truncate
+                              ${selectedHabitPage === page
+                                ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-600 ring-offset-1'
+                                : habitGeneratedImages[page]
+                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                            `}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                    </div>
+                    <div className="mt-2 text-xs text-slate-400 text-center">
+                      {Object.keys(habitGeneratedImages).length}/{Object.keys(habitPrompts).length} pages generated
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
+
+          {/* Unified Sidebar Action Buttons (Generate All & Download All ZIP) */}
+          {(isBook || Object.keys(habitPrompts).length > 0) && (
+            <div className="p-4 space-y-2 border-t border-slate-100 bg-slate-50/50">
+              <button
+                onClick={handleGenerateAll}
+                disabled={isGeneratingAllActive}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm
+                  ${isGeneratingAllActive ? 'bg-amber-400 text-white cursor-wait' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}
+              >
+                {isGeneratingAllActive ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> {allProgress}</>
+                ) : (
+                  <><Sparkles className="w-4 h-4" /> Auto-Generate All Pages</>
+                )}
+              </button>
+              {Object.keys(activeGeneratedImages).length > 0 && (
+                <button
+                  onClick={handleDownloadAll}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white shadow-md transition-all"
+                >
+                  <Download className="w-4 h-4" /> Download All ({Object.keys(activeGeneratedImages).length})
+                </button>
+              )}
+            </div>
+          )}
+
         </div>
 
-        {/* Right Area - Canvas & Prompt */}
-        <div className="flex-1 bg-slate-50 flex flex-col" style={{height:'calc(100vh - 57px)'}}>
+        {/* Right Area - Canvas & Prompt Editor (Reused Symmetrically) */}
+        <div className="flex-1 bg-slate-50 flex flex-col" style={{ height: 'calc(100vh - 57px)' }}>
           <div className="flex-1 p-4 flex gap-4 w-full overflow-hidden">
-
-            {/* Generation Canvas */}
+            
+            {/* Center Panel: Canvas */}
             <div className="flex-1 flex flex-col min-w-0">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-bold text-slate-800">
-                  Letter {selectedLetter} Page
+                  {isBook ? `Letter ${activePageKey} Page` : `${habitTitle} - ${activePageKey}`}
                 </h2>
                 <div className="flex items-center gap-2">
-                  {modelUsed[selectedLetter] && (
+                  {activeModelUsed[activePageKey] && (
                     <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs font-medium rounded-full">
-                      via {MODEL_LABELS[modelUsed[selectedLetter]]}
+                      via {MODEL_LABELS[activeModelUsed[activePageKey]]}
                     </span>
                   )}
-                  {generatedImages[selectedLetter] && (
+                  {activeGeneratedImages[activePageKey] && (
                     <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-wide rounded-full flex items-center gap-1">
                       <Sparkles className="w-3 h-3" /> Generated
                     </span>
@@ -291,22 +681,44 @@ export default function App() {
 
               <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col min-h-0">
                 <div className="flex-1 bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200 flex items-center justify-center min-h-0">
-                  {isGenerating ? (
+                  {isGeneratingActiveImage ? (
                     <div className="flex flex-col items-center text-indigo-600">
                       <Loader2 className="w-8 h-8 animate-spin mb-3" />
                       <p className="font-medium animate-pulse text-sm">Painting your masterpiece...</p>
                     </div>
-                  ) : generatedImages[selectedLetter] ? (
-                    <img
-                      src={generatedImages[selectedLetter]}
-                      alt={`Generated illustration for ${selectedLetter}`}
-                      className="w-full h-full object-contain"
-                    />
+                  ) : activeGeneratedImages[activePageKey] ? (
+                    <div className="flex flex-col h-full w-full bg-white overflow-hidden">
+                      {/* Image Section */}
+                      <div className="flex-1 bg-slate-50 relative min-h-0 flex items-center justify-center p-2">
+                        <img
+                          src={activeGeneratedImages[activePageKey]}
+                          alt={`Generated illustration for ${activePageKey}`}
+                          className="w-full h-full object-contain rounded-lg shadow-sm border border-slate-200"
+                        />
+                      </div>
+                      {/* Storybook Text Banner */}
+                      <div className="px-4 py-3 bg-white border-t-2 border-indigo-100 flex-shrink-0">
+                        <textarea
+                          value={activeStories[activePageKey] || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (isBook) {
+                              setBookStories(prev => ({ ...prev, [activePageKey]: val }));
+                            } else {
+                              setHabitStoryTexts(prev => ({ ...prev, [activePageKey]: val }));
+                            }
+                          }}
+                          rows={2}
+                          className="w-full text-center text-base font-bold text-slate-800 leading-relaxed font-serif tracking-wide resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded-lg p-2 bg-transparent border border-transparent hover:border-indigo-100 transition-colors"
+                          placeholder="Story text will appear here after generating..."
+                        />
+                      </div>
+                    </div>
                   ) : (
                     <div className="text-center text-slate-400 p-6">
                       <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
                       <p className="font-medium text-slate-500 mb-1">Canvas is empty</p>
-                      <p className="text-xs">Click generate to render the {selectedLetter} illustration</p>
+                      <p className="text-xs">Click generate to render the '{activePageKey}' illustration</p>
                     </div>
                   )}
                 </div>
@@ -320,75 +732,57 @@ export default function App() {
 
                 <div className="mt-2 flex gap-2">
                   <button
-                    onClick={() => handleGenerate()}
-                    disabled={isGenerating || generatingAll}
+                    onClick={() => handleGenerateImage(activePageKey, activePromptText)}
+                    disabled={isGeneratingActiveImage || isGeneratingAllActive || ( !isBook && Object.keys(habitPrompts).length === 0 )}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all
-                      ${isGenerating ? 'bg-indigo-400 text-white cursor-wait' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg'}`}
+                      ${(isGeneratingActiveImage || ( !isBook && Object.keys(habitPrompts).length === 0 )) ? 'bg-indigo-400 text-white cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg'}`}
                   >
-                    {isGenerating ? (
+                    {isGeneratingActiveImage ? (
                       <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
                     ) : (
-                      <><Sparkles className="w-4 h-4" /> Generate '{selectedLetter}'</>
+                      <><Sparkles className="w-4 h-4" /> Generate '{activePageKey}'</>
                     )}
                   </button>
-                  {generatedImages[selectedLetter] && (
-                    <a
-                      href={generatedImages[selectedLetter]}
-                      download={`Page_${selectedLetter}.png`}
+                  {activeGeneratedImages[activePageKey] && (
+                    <button
+                      onClick={() => handleDownloadPage(activePageKey)}
                       className="px-4 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
-                      title="Download Image"
+                      title="Download Page with Text"
                     >
                       <Download className="w-4 h-4" />
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Prompt Editor Panel */}
+            {/* Right Panel: Prompt Editor */}
             <div className="w-80 flex flex-col min-h-0">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs font-semibold text-slate-800 uppercase tracking-wide">
                   Active Prompt
                 </h3>
-                <button
-                  onClick={handleShowPrompt}
-                  className="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-semibold rounded-lg transition-colors"
-                >
-                  {promptLoaded ? 'Reset Prompt' : 'Show Prompt'}
-                </button>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
-                {promptLoaded ? (
-                  <textarea
-                    value={editablePrompt}
-                    onChange={(e) => setEditablePrompt(e.target.value)}
-                    className="flex-1 w-full p-4 text-xs text-slate-600 leading-relaxed font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded-2xl"
-                    placeholder="Click 'Show Prompt' to load and edit the prompt..."
-                  />
-                ) : (
-                  <div className="flex-1 flex items-center justify-center p-6 text-center text-slate-400">
-                    <div>
-                      <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-xs font-medium">Click "Show Prompt" to view & edit</p>
-                      <p className="text-xs mt-1">Edited prompts will be used for generation</p>
-                    </div>
-                  </div>
-                )}
+                <textarea
+                  value={activePromptText}
+                  onChange={(e) => handlePromptChange(e.target.value)}
+                  className="flex-1 w-full p-4 text-xs text-slate-600 leading-relaxed font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded-2xl"
+                  placeholder="Page prompt will load here..."
+                />
               </div>
 
-              {promptLoaded && (
-                <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl p-3">
-                  <p className="text-xs text-amber-700">
-                    <strong>Tip:</strong> Edit the prompt above, then click Generate. Your edited version will be used.
-                  </p>
-                </div>
-              )}
+              <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <p className="text-xs text-amber-700">
+                  <strong>Tip:</strong> Edit the prompt above, then click Generate. Your custom details will be used immediately.
+                </p>
+              </div>
             </div>
 
           </div>
         </div>
+
       </div>
     </div>
   );

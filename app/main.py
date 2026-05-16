@@ -6,8 +6,11 @@ from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
+import json
+import re
 import httpx
 from dotenv import load_dotenv
+from app.agents import HabitChartCrew
 
 load_dotenv()
 
@@ -255,15 +258,17 @@ async def generate_image_endpoint(request: ImageGenerationRequest):
 
 
 class ChildProfile(BaseModel):
-    name: str
-    age: int
-    language: str
+    name: str = "rithvin"
+    age: int = 3
+    language: str = "english"
     gender: str = "boy"
-    skin_tone: str = "warm golden brown"
+    skin_tone: str = "fair skin"
     hair_color: str = "black"
     hair_style: str = "short curly"
     eye_color: str = "dark brown"
     outfit_color: str = "bright red"
+    style: str = "Pixar-style illustration"
+    lighting: str = "soft lighting"
 
 
 @app.get("/")
@@ -308,3 +313,37 @@ def get_book_prompts(profile: ChildProfile):
             letter=letter,
         )
     return {"prompts": prompts}
+
+
+class HabitChartRequest(BaseModel):
+    title: str
+    total_scenes: int = 4
+    total_pages: int = 4
+    child_profile: ChildProfile | None = None
+    text_model: str = 'ollama'
+
+@app.post("/generate-habit-chart")
+def generate_habit_chart(request: HabitChartRequest):
+    from fastapi.responses import StreamingResponse as _SR
+    profile_dict = (request.child_profile or ChildProfile()).model_dump()
+
+    def stream():
+        try:
+            crew = HabitChartCrew(
+                chart_title=request.title,
+                total_scenes=request.total_scenes,
+                total_pages=request.total_pages,
+                child_profile=profile_dict,
+                text_model=request.text_model
+            )
+            # First: send total page count so the UI can show a progress bar
+            yield json.dumps({"type": "meta", "total": crew.total_pages}) + "\n"
+            # Then: stream each page as it finishes
+            for page_name, page_data in crew.run_stream():
+                yield json.dumps({"type": "page", "page": page_name, "data": page_data}) + "\n"
+        except Exception as e:
+            print(f"CREWAI STREAM ERROR: {e}")
+            yield json.dumps({"type": "error", "detail": str(e)}) + "\n"
+
+    return _SR(stream(), media_type="application/x-ndjson")
+

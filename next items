@@ -1,0 +1,31 @@
+i would like to build this as user based interactive webpage.
+1. get habit details.
+2. total scenes
+3. total pages (based on the page count, scenes can be grouped)
+4. generate prompt
+5. for each page, display final prompt in editable window (similar to abcd)
+6. Select model text to image
+7. Generate page/ all similar to abcd.
+8. download option same as abcd,
+
+for basic and common iteams, keep similar behaviour across mutiple modules
+
+-> image generation should be a seperate standalone mofunctionality, which can be called from any module/tab and should not be part of any module/tab  
+-> this removed the dependancy bet moduels, any one can gener image if promt is ready.
+-> each module is only for prompt creation with its own functionality 
+-> each module should have similar interface
+-> All common functionality should be in separate module    
+    -> download
+    -> model selection
+    -> user profile
+    -> view/edit prompt
+
+
+Habit module:
+Pages ready: 3 / 6 should comes instead of analyzing...
+so that for completed pages user can see the generated prompts
+for completed pages we are getting select page, but its comiing as per completion order. so before adding new page, reorder it.
+donwload all is missing
+
+
+for story module: 

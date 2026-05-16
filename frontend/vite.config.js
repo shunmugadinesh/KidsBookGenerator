@@ -10,9 +10,10 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
-      '/generate-image': 'http://localhost:8003',
-      '/generate-prompt': 'http://localhost:8003',
-      '/generate-book': 'http://localhost:8003',
+      '/generate-image': 'http://create-book-api:8003',
+      '/generate-prompt': 'http://create-book-api:8003',
+      '/generate-book': 'http://create-book-api:8003',
+      '/generate-habit-chart': 'http://create-book-api:8003',
     }
   }
 })
