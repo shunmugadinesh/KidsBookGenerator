@@ -18,6 +18,7 @@ export default defineConfig({
       '/preview-voice': 'http://create-book-api:8003',
       '/generated-media': 'http://create-book-api:8003',
       '/book-data': 'http://create-book-api:8003',
+      '/compile-full-movie': 'http://create-book-api:8003',
     }
   }
 })

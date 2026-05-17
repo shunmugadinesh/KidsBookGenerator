@@ -25,8 +25,8 @@ class BookPromptRequest(BaseModel):
 
 class HabitChartRequest(BaseModel):
     title: str
-    total_scenes: int = 4
-    total_pages: int = 4
+    total_scenes: int = 3
+    total_pages: int = 3
     child_profile: Optional[ChildProfile] = None
     text_model: str = 'ollama'
 
@@ -36,3 +36,6 @@ class AudioVideoRequest(BaseModel):
     voice: str = "en-US-AriaNeural"  # Microsoft Edge Voice ID or 'gtts' / 'eleven_...'
     bgm: str = "none"          # BGM preset key or custom prompt
     page_key: str = "Page 1"   # Page key for logging reference
+
+class FullMovieRequest(BaseModel):
+    video_filenames: list[str]

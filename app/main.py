@@ -4,11 +4,11 @@ from fastapi.staticfiles import StaticFiles
 import json
 import os
 
-from app.models.schemas import ImageGenerationRequest, BookPromptRequest, HabitChartRequest, AudioVideoRequest
+from app.models.schemas import ImageGenerationRequest, BookPromptRequest, HabitChartRequest, AudioVideoRequest, FullMovieRequest
 from app.utils.image_generator import generate_image
 from app.modules.book import get_letters_prompts
 from app.modules.habit import HabitChartOrchestrator
-from app.utils.audio_video import compile_story_video
+from app.utils.audio_video import compile_story_video, ensure_ffmpeg
 
 app = FastAPI(title="Book Generator API")
 
@@ -114,4 +114,72 @@ def get_book_data_endpoint():
         from app.resources.data import LETTERS_DATA
         return {"status": "success", "letters": LETTERS_DATA}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/compile-full-movie")
+def compile_full_movie_endpoint(request: FullMovieRequest):
+    try:
+        import uuid
+        import subprocess
+        
+        gen_dir = os.path.abspath("app/resources/generated")
+        output_filename = f"full_storybook_movie_{uuid.uuid4().hex[:8]}.mp4"
+        output_path = os.path.join(gen_dir, output_filename)
+        
+        # 1. Verify that all listed files exist in app/resources/generated
+        valid_paths = []
+        for fname in request.video_filenames:
+            if not fname:
+                continue
+            # Prevent directory traversal attacks
+            safe_fname = os.path.basename(fname)
+            fpath = os.path.join(gen_dir, safe_fname)
+            if not os.path.exists(fpath):
+                raise FileNotFoundError(f"Required page video segment not found: {safe_fname}. Please compile this page first!")
+            valid_paths.append(fpath)
+            
+        if not valid_paths:
+            raise ValueError("No video segments provided to compile.")
+            
+        # 2. Write the dynamic concat listing file
+        list_file_path = os.path.join(gen_dir, f"concat_list_{uuid.uuid4().hex[:8]}.txt")
+        with open(list_file_path, "w", encoding="utf-8") as f:
+            for p in valid_paths:
+                # Standard FFmpeg syntax requires forward slashes even on Windows!
+                safe_path = p.replace("\\", "/")
+                f.write(f"file '{safe_path}'\n")
+                
+        try:
+            # 3. Call FFmpeg to merge clips instantly using the direct stream copy code
+            ffmpeg_bin = ensure_ffmpeg()
+            cmd = [
+                ffmpeg_bin, "-y",
+                "-f", "concat",
+                "-safe", "0",
+                "-i", list_file_path,
+                "-c", "copy",  # Fast stream copy without re-encoding!
+                output_path
+            ]
+            
+            print(f"FFmpeg Merge Run: {' '.join(cmd)}")
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            
+            if result.returncode != 0:
+                raise Exception(f"FFmpeg merge execution failed: {result.stderr}")
+                
+            print(f"Full movie compiled successfully: {output_path}")
+            return {
+                "status": "success",
+                "video_url": f"/generated-media/{output_filename}",
+                "filename": output_filename
+            }
+        finally:
+            # Always clean up the listing description file
+            if os.path.exists(list_file_path):
+                try:
+                    os.remove(list_file_path)
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"FULL_MOVIE_COMPILATION ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))

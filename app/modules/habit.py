@@ -7,7 +7,7 @@ from app.crew_ai.tasks import HabitTasks
 from app.utils.prompts import text_to_image_prompt
 
 class HabitChartOrchestrator:
-    def __init__(self, chart_title, total_scenes=4, total_pages=4, child_profile=None, text_model='ollama'):
+    def __init__(self, chart_title, total_scenes=3, total_pages=3, child_profile=None, text_model='ollama'):
         self.chart_title = chart_title
         self.total_scenes = total_scenes
         self.total_pages = total_pages
