@@ -1,6 +1,4 @@
-# app/prompts.py
-from .data import LETTERS_DATA
-
+from app.resources.data import LETTERS_DATA
 
 def generate_prompt(
     name: str,
@@ -36,3 +34,33 @@ The word "{word}" should appear as the label text below the scene in {language} 
 NEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted"""
 
     return prompt
+
+
+def text_to_image_prompt(consistency_data: dict, story_data: dict) -> str:
+    """
+    Constructs a structured text-to-image prompt from the consistency data and page specific story details.
+    """
+    subject = consistency_data.get('subject') or ""
+    action = story_data.get('action') or ""
+    environment = consistency_data.get('environment') or ""
+    style = consistency_data.get('style') or ""
+    lighting = consistency_data.get('lighting') or ""
+    composition = story_data.get('composition') or ""
+    details = story_data.get('details') or ""
+    quality = consistency_data.get('quality') or ""
+    negative_prompt = consistency_data.get('negative_prompt') or ""
+    guidelines = consistency_data.get('guidelines') or ""
+
+    prompt_lines = [
+        f"SUBJECT: {subject}",
+        f"ACTION: {action}",
+        f"ENVIRONMENT: {environment}",
+        f"STYLE: {style}",
+        f"LIGHTING: {lighting}",
+        f"COMPOSITION: {composition}",
+        f"DETAILS: {details}",
+        f"QUALITY: {quality}",
+        f"NEGATIVE_PROMPT: {negative_prompt}",
+        f"GUIDELINES: {guidelines}"
+    ]
+    return "\n".join(prompt_lines).strip()

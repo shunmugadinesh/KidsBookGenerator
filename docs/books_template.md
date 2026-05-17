@@ -13,6 +13,12 @@
 11. Nature/Animal books
 12. Sensory/Shape/Color books
 
+# Based on above types,group them based on the template, so thaat we can have fixed tmeplate for each group instead of creating seperate template for each type of book.
+
+group 1 
+
+
+
 
 # We can't apply same template for each book type
 

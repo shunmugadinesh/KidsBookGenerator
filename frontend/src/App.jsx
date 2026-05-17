@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Sparkles, BookOpen, Download, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, Sparkles, BookOpen, Download, AlertCircle, Loader2, XCircle } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -38,7 +38,7 @@ const LETTERS = Object.keys(BOOK_PROMPTS);
 export default function App() {
   const [referenceImage, setReferenceImage] = useState(null);
   const [appMode, setAppMode] = useState('book'); // 'book' or 'habit'
-  
+
   // Model Selectors (Common)
   const [selectedModel, setSelectedModel] = useState('pollinations');
   const [habitTextModel, setHabitTextModel] = useState('ollama');
@@ -47,6 +47,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [allProgress, setAllProgress] = useState('');
   const fileInputRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   // Alphabet Book Module States
   const [selectedLetter, setSelectedLetter] = useState('A');
@@ -66,7 +67,7 @@ export default function App() {
     });
     return stories;
   });
-  
+
   // Custom book prompts (so user edits to letters persist)
   const [customBookPrompts, setCustomBookPrompts] = useState({ ...BOOK_PROMPTS });
 
@@ -112,7 +113,7 @@ export default function App() {
   const activeGeneratedImages = isBook ? generatedImages : habitGeneratedImages;
   const activeModelUsed = isBook ? modelUsed : habitModelUsed;
   const activeStories = isBook ? bookStories : habitStoryTexts;
-  
+
   // Active Prompt and prompt editor sync
   const activePromptText = isBook ? editablePrompt : habitEditablePrompt;
 
@@ -154,10 +155,23 @@ export default function App() {
     }
   };
 
-  const handleGenerateImage = async (pageKey = activePageKey, promptText = activePromptText) => {
+  const stopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
+
+  const handleGenerateImage = async (pageKey = activePageKey, promptText = activePromptText, signal = null) => {
     const isGeneratingSetter = isBook ? setIsGenerating : setIsGeneratingHabitImage;
     isGeneratingSetter(true);
     setError(null);
+
+    if (!signal) {
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+      abortControllerRef.current = new AbortController();
+      signal = abortControllerRef.current.signal;
+    }
+
     try {
       const response = await fetch('/generate-image', {
         method: 'POST',
@@ -166,7 +180,8 @@ export default function App() {
           prompt: promptText,
           image: referenceImage,
           model: selectedModel
-        })
+        }),
+        signal
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Generation failed");
@@ -179,6 +194,7 @@ export default function App() {
         setHabitModelUsed(prev => ({ ...prev, [pageKey]: selectedModel }));
       }
     } catch (err) {
+      if (err.name === 'AbortError') return;
       setError(`Failed to generate image for ${pageKey}. ${err.message}`);
     } finally {
       isGeneratingSetter(false);
@@ -190,23 +206,29 @@ export default function App() {
     isGeneratingAllSetter(true);
     setError(null);
 
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     for (let i = 0; i < pagesList.length; i++) {
+      if (signal.aborted) break;
       const pageKey = pagesList[i];
       setAllProgress(`Generating ${pageKey} (${i + 1}/${pagesList.length})...`);
-      
+
       if (isBook) {
         setSelectedLetter(pageKey);
       } else {
         setSelectedHabitPage(pageKey);
       }
 
-      const promptToUse = isBook 
-        ? customBookPrompts[pageKey] 
+      const promptToUse = isBook
+        ? customBookPrompts[pageKey]
         : (typeof habitPrompts[pageKey] === 'object' ? habitPrompts[pageKey].prompt : habitPrompts[pageKey]);
 
       try {
-        await handleGenerateImage(pageKey, promptToUse);
+        await handleGenerateImage(pageKey, promptToUse, signal);
       } catch (err) {
+        if (err.name === 'AbortError') break;
         console.error(`Failed bulk generation for ${pageKey}:`, err);
       }
     }
@@ -219,7 +241,7 @@ export default function App() {
       const img = new Image();
       img.onload = () => {
         try {
-          const bannerHeight = Math.round(img.height * 0.18); // 18% of image height for text banner
+          const bannerHeight = Math.round(img.height * 0.20); // 20% fixed footer banner
           const canvasW = img.width;
           const canvasH = img.height + bannerHeight;
 
@@ -237,34 +259,52 @@ export default function App() {
 
           // Draw a thin indigo separator line
           ctx.fillStyle = '#c7d2fe'; // indigo-200
-          ctx.fillRect(0, img.height, canvasW, 3);
+          ctx.fillRect(0, img.height, canvasW, 4);
 
           // Draw story text centred in the banner
-          const fontSize = Math.max(24, Math.round(bannerHeight * 0.28));
           ctx.fillStyle = '#1e293b'; // slate-800
-          ctx.font = `bold ${fontSize}px Georgia, serif`;
           ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
 
-          // Word-wrap the story text to fit canvas width
-          const words = storyText.split(' ');
+          // Word-wrap and dynamically scale the font size down to fit within the white space
           const maxWidth = canvasW * 0.88;
+          const maxAllowedH = bannerHeight * 0.65; // leave 35% generous margin!
+          let fontSize = Math.max(18, Math.round(bannerHeight * 0.16)); // elegant, smaller base size (32px)
           let lines = [];
-          let current = '';
-          for (const word of words) {
-            const test = current ? `${current} ${word}` : word;
-            if (ctx.measureText(test).width > maxWidth && current) {
-              lines.push(current);
-              current = word;
-            } else {
-              current = test;
-            }
-          }
-          if (current) lines.push(current);
+          let lineH = fontSize * 1.35;
+          let totalTextH = 0;
 
-          const lineH = fontSize * 1.4;
-          const totalTextH = lines.length * lineH;
-          const startY = img.height + (bannerHeight - totalTextH) / 2 + fontSize / 2;
+          while (fontSize > 8) {
+            ctx.font = `bold ${fontSize}px Georgia, serif`;
+            const words = storyText.split(' ');
+            lines = [];
+            let current = '';
+            for (const word of words) {
+              const test = current ? `${current} ${word}` : word;
+              if (ctx.measureText(test).width > maxWidth && current) {
+                lines.push(current);
+                current = word;
+              } else {
+                current = test;
+              }
+            }
+            if (current) lines.push(current);
+
+            lineH = fontSize * 1.35;
+            totalTextH = (lines.length - 1) * lineH + fontSize;
+            if (totalTextH <= maxAllowedH) {
+              break;
+            }
+            fontSize -= 2;
+          }
+
+          // Force top baseline alignment to make overlaps mathematically impossible
+          ctx.textBaseline = 'top';
+          ctx.font = `bold ${fontSize}px Georgia, serif`;
+
+          // Centered padding, but never allow it to go above the banner (min 16px padding)
+          const padding = Math.max(16, (bannerHeight - totalTextH) / 2);
+          const startY = img.height + padding;
+
           lines.forEach((line, i) => {
             ctx.fillText(line, canvasW / 2, startY + i * lineH);
           });
@@ -305,7 +345,7 @@ export default function App() {
     const zip = new JSZip();
     const folderName = isBook ? 'ABCD_Book_Pages' : `${habitTitle || 'Habit'}_Pages`;
     const folder = zip.folder(folderName);
-    
+
     // Get list of pages that have generated images
     const generatedPages = pagesList.filter(pageKey => activeGeneratedImages[pageKey]);
     if (generatedPages.length === 0) return;
@@ -338,6 +378,10 @@ export default function App() {
     setHabitPlanProgress({ done: 0, total: 0 });
     setError(null);
     let firstPageSet = false;
+
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+
     try {
       const response = await fetch('/generate-habit-chart', {
         method: 'POST',
@@ -347,7 +391,8 @@ export default function App() {
           total_scenes: parseInt(habitTotalScenes),
           total_pages: parseInt(habitTotalPages),
           text_model: habitTextModel
-        })
+        }),
+        signal: abortControllerRef.current.signal
       });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
@@ -388,6 +433,10 @@ export default function App() {
         }
       }
     } catch (err) {
+      if (err.name === 'AbortError') {
+        setError('Generation stopped by user.');
+        return;
+      }
       setError('Failed to generate habit plan. ' + err.message);
     } finally {
       setIsGeneratingHabitPlan(false);
@@ -658,7 +707,7 @@ export default function App() {
         {/* Right Area - Canvas & Prompt Editor (Reused Symmetrically) */}
         <div className="flex-1 bg-slate-50 flex flex-col" style={{ height: 'calc(100vh - 57px)' }}>
           <div className="flex-1 p-4 flex gap-4 w-full overflow-hidden">
-            
+
             {/* Center Panel: Canvas */}
             <div className="flex-1 flex flex-col min-w-0">
               <div className="flex items-center justify-between mb-2">
@@ -733,9 +782,9 @@ export default function App() {
                 <div className="mt-2 flex gap-2">
                   <button
                     onClick={() => handleGenerateImage(activePageKey, activePromptText)}
-                    disabled={isGeneratingActiveImage || isGeneratingAllActive || ( !isBook && Object.keys(habitPrompts).length === 0 )}
+                    disabled={isGeneratingActiveImage || isGeneratingAllActive || (!isBook && Object.keys(habitPrompts).length === 0)}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all
-                      ${(isGeneratingActiveImage || ( !isBook && Object.keys(habitPrompts).length === 0 )) ? 'bg-indigo-400 text-white cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg'}`}
+                      ${(isGeneratingActiveImage || (!isBook && Object.keys(habitPrompts).length === 0)) ? 'bg-indigo-400 text-white cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg'}`}
                   >
                     {isGeneratingActiveImage ? (
                       <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
@@ -743,6 +792,7 @@ export default function App() {
                       <><Sparkles className="w-4 h-4" /> Generate '{activePageKey}'</>
                     )}
                   </button>
+
                   {activeGeneratedImages[activePageKey] && (
                     <button
                       onClick={() => handleDownloadPage(activePageKey)}

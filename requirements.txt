@@ -5,3 +5,5 @@ crewai
 httpx
 python-dotenv
 huggingface_hub
+litellm
+
