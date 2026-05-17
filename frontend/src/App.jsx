@@ -3,38 +3,6 @@ import { Upload, Image as ImageIcon, Sparkles, BookOpen, Download, AlertCircle, 
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
-// The user's complete A-Z prompt dictionary
-const BOOK_PROMPTS = {
-  "A": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\njoyfully holding a giant shiny red apple with both hands, smiling at it, apple has a golden glow around it, apple is oversized and cartoonishly perfect.\n\nLetter \"A\" for Apple. Centered full-body or 3/4 body composition, clean soft pastel background with subtle apple-themed color wash, single large glowing letter \"A\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Apple\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "B": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nlaughing with delight as a large magical rainbow-coloured butterfly lands gently on their nose, surrounded by 2–3 more fluttering butterflies nearby.\n\nLetter \"B\" for Butterfly. Centered full-body or 3/4 body composition, clean soft pastel background with subtle butterfly-themed color wash, single large glowing letter \"B\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Butterfly\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "C": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nsitting cross-legged on the floor, cuddling a fluffy cartoon orange cat in their lap, both looking happy and cozy, soft warm living-room light.\n\nLetter \"C\" for Cat. Centered full-body or 3/4 body composition, clean soft pastel background with subtle cat-themed color wash, single large glowing letter \"C\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Cat\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "D": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\ncrouching down by a tiny pond puddle, hand outstretched, as a cheerful yellow cartoon duck waddles toward them, water rippling softly.\n\nLetter \"D\" for Duck. Centered full-body or 3/4 body composition, clean soft pastel background with subtle duck-themed color wash, single large glowing letter \"D\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Duck\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "E": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nlaughing as a tiny baby cartoon elephant wraps its small trunk around their arm in a playful hug, elephant is soft grey with big floppy ears.\n\nLetter \"E\" for Elephant. Centered full-body or 3/4 body composition, clean soft pastel background with subtle elephant-themed color wash, single large glowing letter \"E\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Elephant\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "F": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nwide-eyed and excited, holding up a round fishbowl with a single bright orange fish inside, fish and child both making funny surprised faces at each other.\n\nLetter \"F\" for Fish. Centered full-body or 3/4 body composition, clean soft pastel background with subtle fish-themed color wash, single large glowing letter \"F\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Fish\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "G": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nstanding next to a tiny cute cartoon giraffe, stretching up on tiptoes trying to reach the giraffe's neck for a hug, both looking adorable.\n\nLetter \"G\" for Giraffe. Centered full-body or 3/4 body composition, clean soft pastel background with subtle giraffe-themed color wash, single large glowing letter \"G\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Giraffe\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "H": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nwearing a comically oversized magical wizard hat covered in stars and moons, hat slightly tilted, arms out for balance, giggling expression.\n\nLetter \"H\" for Hat. Centered full-body or 3/4 body composition, clean soft pastel background with subtle hat-themed color wash, single large glowing letter \"H\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Hat\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "I": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nholding a towering 3-scoop cartoon ice cream cone with colorful scoops (strawberry, vanilla, chocolate), a tiny bit dripping, eyes wide with joy.\n\nLetter \"I\" for Ice cream. Centered full-body or 3/4 body composition, clean soft pastel background with subtle ice cream-themed color wash, single large glowing letter \"I\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Ice cream\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "J": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\peeking curiously into a glowing mason jar full of tiny fireflies, soft golden light illuminating their face with wonder, both hands around the jar.\n\nLetter \"J\" for Jar. Centered full-body or 3/4 body composition, clean soft pastel background with subtle jar-themed color wash, single large glowing letter \"J\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Jar\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "K": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nrunning joyfully with a large diamond-shaped kite soaring high above, string in both hands, hair and clothes blowing in breeze, blue sky behind.\n\nLetter \"K\" for Kite. Centered full-body or 3/4 body composition, clean soft pastel background with subtle kite-themed color wash, single large glowing letter \"K\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Kite\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "L": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nmaking the funniest sour face after biting into a bright cartoon lemon, eyes scrunched, shoulders raised, lemon held dramatically in one hand.\n\nLetter \"L\" for Lemon. Centered full-body or 3/4 body composition, clean soft pastel background with subtle lemon-themed color wash, single large glowing letter \"L\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Lemon\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "M": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nlying on their back in soft grass, reaching up both arms toward a giant glowing cartoon moon in a starry purple night sky, looking magical and peaceful.\n\nLetter \"M\" for Moon. Centered full-body or 3/4 body composition, clean soft pastel background with subtle moon-themed color wash, single large glowing letter \"M\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Moon\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "N": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\ngently and carefully holding a small cozy bird nest with two tiny eggs inside, kneeling down, expression of gentle wonder and care.\n\nLetter \"N\" for Nest. Centered full-body or 3/4 body composition, clean soft pastel background with subtle nest-themed color wash, single large glowing letter \"N\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Nest\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "O": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\npeeling a large cartoon orange, spiral peel coming off in one piece, citrus mist in the air, bright and zesty expression, juice slightly spraying.\n\nLetter \"O\" for Orange. Centered full-body or 3/4 body composition, clean soft pastel background with subtle orange-themed color wash, single large glowing letter \"O\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Orange\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "P": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nseated at a small colourful desk, drawing enthusiastically with a giant oversized magic pencil, sparkling colourful art appearing on the paper in front of them.\n\nLetter \"P\" for Pencil. Centered full-body or 3/4 body composition, clean soft pastel background with subtle pencil-themed color wash, single large glowing letter \"P\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Pencil\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "Q": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nproudly wearing a sparkly cartoon crown and a little royal cape, holding a sceptre, standing regally but with a big playful grin, looking adorable not scary.\n\nLetter \"Q\" for Queen. Centered full-body or 3/4 body composition, clean soft pastel background with subtle queen-themed color wash, single large glowing letter \"Q\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Queen\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "R": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\narms spread wide in delight, standing under a giant vivid rainbow that arcs across the whole background, soft sunlight and a few white fluffy clouds.\n\nLetter \"R\" for Rainbow. Centered full-body or 3/4 body composition, clean soft pastel background with subtle rainbow-themed color wash, single large glowing letter \"R\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Rainbow\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "S": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nholding a large glowing golden 5-pointed star with both hands above their head, star casting warm sparkly light on their face, night sky full of small stars behind.\n\nLetter \"S\" for Star. Centered full-body or 3/4 body composition, clean soft pastel background with subtle star-themed color wash, single large glowing letter \"S\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Star\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "T": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nsitting contentedly in the low wide branch of a friendly cartoon tree, legs dangling, one hand patting the tree trunk, surrounded by green leaves and a butterfly.\n\nLetter \"T\" for Tree. Centered full-body or 3/4 body composition, clean soft pastel background with subtle tree-themed color wash, single large glowing letter \"T\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Tree\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "U": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nstanding under a large colourful polka-dot umbrella, happy and dry while cartoon raindrops fall gently around them, puddles on the ground reflecting colours.\n\nLetter \"U\" for Umbrella. Centered full-body or 3/4 body composition, clean soft pastel background with subtle umbrella-themed color wash, single large glowing letter \"U\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Umbrella\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "V": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nstanding proudly holding a small cartoon violin under their chin, bow in hand, musical notes floating out in swirling colourful trails, joyful performance face.\n\nLetter \"V\" for Violin. Centered full-body or 3/4 body composition, clean soft pastel background with subtle violin-themed color wash, single large glowing letter \"V\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Violin\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "W": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nsitting on the ground happily eating a huge cartoon watermelon slice, juice on cheeks, seeds flying out comically, summery joyful expression.\n\nLetter \"W\" for Watermelon. Centered full-body or 3/4 body composition, clean soft pastel background with subtle watermelon-themed color wash, single large glowing letter \"W\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Watermelon\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "X": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nkneeling on the floor banging a bright rainbow-coloured cartoon xylophone with two mallets, musical notes bouncing everywhere, huge smile of musical fun.\n\nLetter \"X\" for Xylophone. Centered full-body or 3/4 body composition, clean soft pastel background with subtle xylophone-themed color wash, single large glowing letter \"X\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Xylophone\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "Y": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nsitting surrounded by colourful balls of yarn, playfully tangled in a loop of soft yarn, laughing, with a tiny cartoon kitten also tangled beside them.\n\nLetter \"Y\" for Yarn. Centered full-body or 3/4 body composition, clean soft pastel background with subtle yarn-themed color wash, single large glowing letter \"Y\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Yarn\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted",
-  "Z": "Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\nlaughing and hugging the striped neck of a friendly small cartoon zebra, zebra has big kind eyes and one ear flicked forward curiously, both looking happy.\n\nLetter \"Z\" for Zebra. Centered full-body or 3/4 body composition, clean soft pastel background with subtle zebra-themed color wash, single large glowing letter \"Z\" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word \"Zebra\" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted"
-};
-
-const LETTERS = Object.keys(BOOK_PROMPTS);
-
 export default function App() {
   const [referenceImage, setReferenceImage] = useState(null);
   const [appMode, setAppMode] = useState('book'); // 'book' or 'habit'
@@ -58,18 +26,46 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Automatically parsed story lines for Alphabet Book
-  const [bookStories, setBookStories] = useState(() => {
-    const stories = {};
-    Object.keys(BOOK_PROMPTS).forEach(letter => {
-      const labelMatch = BOOK_PROMPTS[letter].match(/Letter "[A-Z]" for ([A-Za-z\s]+)\./i);
-      const label = labelMatch ? labelMatch[1] : letter;
-      stories[letter] = `${letter} is for ${label}. Rithvin is happy playing!`;
-    });
-    return stories;
-  });
+  const [bookStories, setBookStories] = useState({});
 
   // Custom book prompts (so user edits to letters persist)
-  const [customBookPrompts, setCustomBookPrompts] = useState({ ...BOOK_PROMPTS });
+  const [customBookPrompts, setCustomBookPrompts] = useState({});
+
+  // Load letters data from backend single source of truth on mount
+  useEffect(() => {
+    const loadLettersData = async () => {
+      try {
+        const response = await fetch('/book-data');
+        const data = await response.json();
+        if (data && data.letters) {
+          const prompts = {};
+          const stories = {};
+          
+          data.letters.forEach(item => {
+            const letter = item.l;
+            const word = item.word;
+            const scene = item.scene;
+            const fact = item.fact;
+            
+            // Reconstruct full Pixar prompt dynamically from backend scene data
+            prompts[letter] = `Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\n${scene}.\n\nLetter "${letter}" for ${word}. Centered full-body or 3/4 body composition, clean soft pastel background with subtle ${word.toLowerCase()}-themed color wash, single large glowing letter "${letter}" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word "${word}" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted`;
+
+            stories[letter] = `${letter} is for ${word}. ${fact}`;
+          });
+          
+          setCustomBookPrompts(prev => {
+            // Keep user edits if any, otherwise merge
+            return { ...prompts, ...prev };
+          });
+          setBookStories(stories);
+        }
+      } catch (err) {
+        console.error("Failed to load book data from backend single source of truth:", err);
+      }
+    };
+    
+    loadLettersData();
+  }, []);
 
   // Habit Chart Module States
   const [habitTitle, setHabitTitle] = useState('Potty Training');
@@ -85,6 +81,19 @@ export default function App() {
   const [isGeneratingHabitImage, setIsGeneratingHabitImage] = useState(false);
   const [generatingAllHabits, setGeneratingAllHabits] = useState(false);
   const [habitPlanProgress, setHabitPlanProgress] = useState({ done: 0, total: 0 });
+
+  // Audio & Video Studio States
+  const [rightPanelTab, setRightPanelTab] = useState('prompt'); // 'prompt' or 'media'
+  const [selectedVoice, setSelectedVoice] = useState('en-US-AriaNeural');
+  const [selectedBgm, setSelectedBgm] = useState('none');
+  const [customBgmPrompt, setCustomBgmPrompt] = useState('gentle bedtime piano loop, calming instrumental');
+  const [isCompilingVideo, setIsCompilingVideo] = useState(false);
+  const [generatedVideos, setGeneratedVideos] = useState({}); // mapping: pageKey -> videoUrl
+
+  // Audio Previewing States
+  const [playingBgm, setPlayingBgm] = useState(null); // 'calm_piano', etc., or null
+  const [playingVoice, setPlayingVoice] = useState(false);
+  const previewAudioRef = useRef(null);
 
   const MODEL_LABELS = {
     pollinations: 'Pollinations AI',
@@ -118,7 +127,7 @@ export default function App() {
   const activePromptText = isBook ? editablePrompt : habitEditablePrompt;
 
   // Unified page list
-  const pagesList = isBook ? LETTERS : Object.keys(habitPrompts).sort((a, b) => {
+  const pagesList = isBook ? Object.keys(customBookPrompts).sort() : Object.keys(habitPrompts).sort((a, b) => {
     const numA = parseInt(a.split(' ')[1]) || 0;
     const numB = parseInt(b.split(' ')[1]) || 0;
     return numA - numB;
@@ -130,6 +139,7 @@ export default function App() {
 
   // Automatically load page prompt whenever page, mode, or dynamic prompts change
   useEffect(() => {
+    stopAllPreviews();
     if (isBook) {
       setEditablePrompt(customBookPrompts[selectedLetter] || '');
     } else {
@@ -138,6 +148,15 @@ export default function App() {
       setHabitEditablePrompt(p || '');
     }
   }, [selectedLetter, selectedHabitPage, appMode, customBookPrompts, habitPrompts]);
+
+  // Clean up previews on unmount
+  useEffect(() => {
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+      }
+    };
+  }, []);
 
   const handlePromptChange = (val) => {
     if (isBook) {
@@ -234,6 +253,117 @@ export default function App() {
     }
     isGeneratingAllSetter(false);
     setAllProgress('');
+  };
+
+  const handleGenerateVideo = async (pageKey = activePageKey) => {
+    const imgSrc = activeGeneratedImages[pageKey];
+    const storyText = activeStories[pageKey] || '';
+    
+    if (!imgSrc) {
+      setError("Please generate an image for this page first.");
+      return;
+    }
+    if (!storyText.trim()) {
+      setError("Story narration text cannot be empty for compiling video.");
+      return;
+    }
+
+    setIsCompilingVideo(true);
+    setError(null);
+
+    try {
+      const bgmValue = selectedBgm === 'ai_musicgen' ? customBgmPrompt : selectedBgm;
+      const response = await fetch('/generate-audio-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: imgSrc,
+          text: storyText,
+          voice: selectedVoice,
+          bgm: bgmValue,
+          page_key: pageKey
+        })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Video compilation failed");
+
+      setGeneratedVideos(prev => ({ ...prev, [pageKey]: data.video_url }));
+    } catch (err) {
+      console.error(err);
+      setError(`Failed to compile narrated video for ${pageKey}: ${err.message}`);
+    } finally {
+      setIsCompilingVideo(false);
+    }
+  };
+
+  const stopAllPreviews = () => {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+    setPlayingBgm(null);
+    setPlayingVoice(false);
+  };
+
+  const handlePreviewBgm = (bgmKey) => {
+    if (playingBgm === bgmKey) {
+      stopAllPreviews();
+      return;
+    }
+    
+    stopAllPreviews();
+
+    const BGM_URLS = {
+      calm_piano: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+      happy_ukulele: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+      magical_fairytale: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+      playful_toyland: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+    };
+
+    const url = BGM_URLS[bgmKey];
+    if (!url) return;
+
+    setPlayingBgm(bgmKey);
+    const audio = new Audio(url);
+    previewAudioRef.current = audio;
+    audio.play().catch(err => {
+      console.error("Failed to play BGM preview:", err);
+      stopAllPreviews();
+    });
+    audio.onended = () => {
+      stopAllPreviews();
+    };
+  };
+
+  const handlePreviewVoice = async (voiceKey) => {
+    if (playingVoice) {
+      stopAllPreviews();
+      return;
+    }
+
+    stopAllPreviews();
+    setPlayingVoice(true);
+
+    try {
+      const response = await fetch(`/preview-voice?voice=${encodeURIComponent(voiceKey)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Failed to fetch voice preview URL");
+
+      const audio = new Audio(data.audio_url);
+      previewAudioRef.current = audio;
+      audio.play().catch(err => {
+        console.error("Failed to play voice preview:", err);
+        stopAllPreviews();
+      });
+      audio.onended = () => {
+        stopAllPreviews();
+      };
+    } catch (err) {
+      console.error(err);
+      setError(`Voice preview failed: ${err.message}`);
+      stopAllPreviews();
+    }
   };
 
   const bakePage = (page, imgSrc, storyText, titleText) => {
@@ -563,7 +693,7 @@ export default function App() {
                   2. Select Letter Page
                 </h2>
                 <div className="grid grid-cols-7 gap-1.5">
-                  {LETTERS.map(letter => (
+                  {Object.keys(customBookPrompts).sort().map(letter => (
                     <button
                       key={letter}
                       onClick={() => { setSelectedLetter(letter); }}
@@ -580,7 +710,7 @@ export default function App() {
                   ))}
                 </div>
                 <div className="mt-2 text-xs text-slate-400 text-center">
-                  {Object.keys(generatedImages).length}/{LETTERS.length} pages generated
+                  {Object.keys(generatedImages).length}/{Object.keys(customBookPrompts).length} pages generated
                 </div>
               </>
             ) : (
@@ -806,28 +936,178 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right Panel: Prompt Editor */}
+            {/* Right Panel: Tabbed Studio */}
             <div className="w-80 flex flex-col min-h-0">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-slate-800 uppercase tracking-wide">
-                  Active Prompt
-                </h3>
+              {/* Tab Selector */}
+              <div className="flex border-b border-slate-200 mb-3 bg-slate-100 p-1 rounded-xl shrink-0">
+                <button
+                  onClick={() => setRightPanelTab('prompt')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    rightPanelTab === 'prompt'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Prompt Editor
+                </button>
+                <button
+                  onClick={() => setRightPanelTab('media')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    rightPanelTab === 'media'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Audio & Video
+                </button>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
-                <textarea
-                  value={activePromptText}
-                  onChange={(e) => handlePromptChange(e.target.value)}
-                  className="flex-1 w-full p-4 text-xs text-slate-600 leading-relaxed font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded-2xl"
-                  placeholder="Page prompt will load here..."
-                />
-              </div>
+              {rightPanelTab === 'prompt' ? (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <textarea
+                      value={activePromptText}
+                      onChange={(e) => handlePromptChange(e.target.value)}
+                      className="flex-1 w-full p-4 text-xs text-slate-600 leading-relaxed font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded-2xl"
+                      placeholder="Page prompt will load here..."
+                    />
+                  </div>
 
-              <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl p-3">
-                <p className="text-xs text-amber-700">
-                  <strong>Tip:</strong> Edit the prompt above, then click Generate. Your custom details will be used immediately.
-                </p>
-              </div>
+                  <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl p-3 shrink-0">
+                    <p className="text-xs text-amber-700 font-medium">
+                      <strong>Tip:</strong> Edit the prompt above, then click Generate. Your custom details will be used immediately.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto space-y-4 pr-1">
+                  {/* TTS Selection */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm shrink-0">
+                    <h4 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">1. Narration Voice</h4>
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedVoice}
+                        onChange={(e) => setSelectedVoice(e.target.value)}
+                        className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="en-US-AriaNeural">Edge: Aria (US Female)</option>
+                        <option value="en-US-GuyNeural">Edge: Guy (US Male)</option>
+                        <option value="en-US-AnaNeural">Edge: Ana (US Child)</option>
+                        <option value="en-IN-NeerjaNeural">Edge: Neerja (IN Female)</option>
+                        <option value="en-GB-SoniaNeural">Edge: Sonia (UK Female)</option>
+                        <option value="gtts">Google TTS (Standard)</option>
+                        <option value="eleven_21m00Tcm4TlvDq8ikWAM">ElevenLabs: Rachel (Premium)</option>
+                      </select>
+                      <button
+                        onClick={() => handlePreviewVoice(selectedVoice)}
+                        className={`px-3 flex items-center justify-center rounded-xl border font-bold text-xs transition-all shadow-sm ${
+                          playingVoice
+                            ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                        title="Listen to Voice Preview"
+                      >
+                        {playingVoice ? 'Stop' : 'Listen'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* BGM Selection */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm shrink-0">
+                    <h4 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">2. Background Music</h4>
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedBgm}
+                        onChange={(e) => setSelectedBgm(e.target.value)}
+                        className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="none">No Background Music</option>
+                        <option value="calm_piano">Bedtime Lullaby (Calm Piano)</option>
+                        <option value="happy_ukulele">Preschool Joy (Happy Ukulele)</option>
+                        <option value="magical_fairytale">Adventure (Fairytale Orchestral)</option>
+                        <option value="playful_toyland">Whimsical (Playful Toyland)</option>
+                        <option value="ai_musicgen">AI Generated Music (MusicGen)</option>
+                      </select>
+                      {selectedBgm !== 'none' && selectedBgm !== 'ai_musicgen' && (
+                        <button
+                          onClick={() => handlePreviewBgm(selectedBgm)}
+                          className={`px-3 flex items-center justify-center rounded-xl border font-bold text-xs transition-all shadow-sm ${
+                            playingBgm === selectedBgm
+                              ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                          title="Listen to BGM Preview"
+                        >
+                          {playingBgm === selectedBgm ? 'Stop' : 'Listen'}
+                        </button>
+                      )}
+                    </div>
+
+                    {selectedBgm === 'ai_musicgen' && (
+                      <div className="mt-2">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">AI Music Prompt</label>
+                        <textarea
+                          value={customBgmPrompt}
+                          onChange={(e) => setCustomBgmPrompt(e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none h-16 resize-none font-mono"
+                          placeholder="e.g. calm soft acoustic guitar loop, happy upbeat kindergarten music"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions & Player */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex-1 flex flex-col min-h-0">
+                    <h4 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider shrink-0">3. Compilation</h4>
+                    
+                    <button
+                      onClick={() => handleGenerateVideo()}
+                      disabled={isCompilingVideo || !activeGeneratedImages[activePageKey]}
+                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all mb-4 shrink-0
+                        ${(isCompilingVideo || !activeGeneratedImages[activePageKey])
+                          ? 'bg-indigo-400 text-white cursor-not-allowed'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg'}`}
+                    >
+                      {isCompilingVideo ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Compiling Video...</>
+                      ) : (
+                        <><Sparkles className="w-4 h-4" /> Compile Narrated Video</>
+                      )}
+                    </button>
+
+                    {/* HTML5 Video Player */}
+                    {generatedVideos[activePageKey] ? (
+                      <div className="space-y-3 flex-1 flex flex-col justify-end min-h-0">
+                        <div className="rounded-xl overflow-hidden border border-slate-200 bg-black flex-1 flex items-center justify-center relative min-h-[150px]">
+                          <video
+                            key={generatedVideos[activePageKey]}
+                            src={generatedVideos[activePageKey]}
+                            controls
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <a
+                          href={generatedVideos[activePageKey]}
+                          download={`${isBook ? 'Book' : habitTitle}_${activePageKey}.mp4`}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white shadow-md transition-all text-center shrink-0"
+                        >
+                          <Download className="w-4 h-4" /> Download MP4 Video
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 min-h-[180px]">
+                        <BookOpen className="w-8 h-8 text-slate-300 mb-2" />
+                        <p className="text-xs text-slate-400 font-semibold">No video compiled yet</p>
+                        <p className="text-[10px] text-slate-400 mt-1 max-w-[180px] mx-auto leading-relaxed">
+                          Generate the page image first, write your story narration, then click Compile to render your video.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>

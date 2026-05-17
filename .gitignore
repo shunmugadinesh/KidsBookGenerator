@@ -26,5 +26,8 @@ multi_agent_crewai/
 z_workouts/
 temp/
 static/
+app/resources/*
 App_bkp.jsx
 *bkp.jsx
+
+old_main.py

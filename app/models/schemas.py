@@ -29,3 +29,10 @@ class HabitChartRequest(BaseModel):
     total_pages: int = 4
     child_profile: Optional[ChildProfile] = None
     text_model: str = 'ollama'
+
+class AudioVideoRequest(BaseModel):
+    image: str                 # Base64 data URI of the generated image
+    text: str                  # Story narration text for TTS
+    voice: str = "en-US-AriaNeural"  # Microsoft Edge Voice ID or 'gtts' / 'eleven_...'
+    bgm: str = "none"          # BGM preset key or custom prompt
+    page_key: str = "Page 1"   # Page key for logging reference
