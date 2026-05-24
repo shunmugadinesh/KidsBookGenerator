@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 
 class ChildProfile(BaseModel):
     name: str = "rithvin"
@@ -39,3 +39,52 @@ class AudioVideoRequest(BaseModel):
 
 class FullMovieRequest(BaseModel):
     video_filenames: list[str]
+
+# ---------------------------------------------------------------------------
+# Phase 3 — DB / Review / Rating schemas
+# ---------------------------------------------------------------------------
+
+class CorePlanRequest(BaseModel):
+    title: str
+    total_scenes: int = 3
+    total_pages: int = 3
+    child_profile: Optional[ChildProfile] = None
+    text_model: str = 'ollama'
+
+class StoryPagesRequest(BaseModel):
+    project_id: int
+    text_model: str = 'ollama'
+
+class SimilaritySearchRequest(BaseModel):
+    topic: str
+    age: int
+    style: str = "Pixar-style illustration"
+    product_type: str = "habit_book"
+ 
+class SaveAgentOutputRequest(BaseModel):
+    project_id: Optional[int] = None   # None means create a new project
+    title: str = "Untitled"
+    project_type: str = "habit_book"
+    page_name: str                      # "scene_plan" / "character_sheet" / "Page 1" etc.
+    agent_role: str
+    raw_output: Dict[str, Any]
+    config_json: Optional[Dict[str, Any]] = None  # ChildProfile dict for new project creation
+ 
+class ReviewUpdateRequest(BaseModel):
+    output_id: int
+    edited_output: Dict[str, Any]
+ 
+class FeedbackRequest(BaseModel):
+    project_id: int
+    page_name: str          # specific page name OR "all" for book-level
+    score: int              # 1-5  (book-level thumbs up = 5, thumbs down = 1)
+    feedback_text: Optional[str] = None
+    is_book_level: bool = False   # True → auto-rate all pages for the project
+
+class SaveProjectAssetsRequest(BaseModel):
+    project_id: int
+    stories: Dict[str, str]
+    prompts: Dict[str, str]
+    images: Dict[str, str]
+    videos: Dict[str, str]
+    full_video: Optional[str] = None

@@ -13,6 +13,36 @@ class HabitTasks:
             expected_output=f"A JSON list of exactly {total_scenes} short scene strings."
         )
 
+    def character_sheet_task(self, agent, profile_str: str):
+        """
+        NEW — Phase 3.
+        Generates a canonical character sheet ONCE per project.
+        Saved to PostgreSQL and reused on every page prompt for consistency.
+        """
+        return Task(
+            description=f"""Create a canonical character sheet for the child protagonist of the book titled "{self.chart_title}".
+
+            Child Profile:
+            {profile_str}
+
+            Output ONLY a JSON object with exactly these 8 keys:
+            - "name": the child's name from the profile
+            - "age_desc": e.g. "3-year-old"
+            - "gender": from the profile
+            - "skin_tone": from the profile
+            - "hair": combine hair_color + hair_style from profile (e.g. "black short curly hair")
+            - "eyes": eye_color from profile (e.g. "dark brown eyes")
+            - "outfit": outfit_color + clothing description — ALWAYS include "oversized T-shirt and colorful training shorts, fully clothed"
+            - "art_style": copy the style value from the profile exactly
+
+            Rules:
+            - Do NOT invent any visual details not in the profile
+            - This output will be copy-pasted into every image prompt — make it precise and self-contained
+            """,
+            agent=agent,
+            expected_output="A JSON object with exactly 8 keys: name, age_desc, gender, skin_tone, hair, eyes, outfit, art_style."
+        )
+
     def consistency_task(self, agent, profile_str: str):
         return Task(
             description=f"""Translate the following Child Profile into a visual description for a kids illustration book.
@@ -51,7 +81,7 @@ class HabitTasks:
                 - Write the narrative ONLY for the current page ({page_name}).
                 - Keep the story sequence and flow flowing logically from the other pages in the CHRONOLOGICAL BOOK OUTLINE. Do not repeat actions, words, or details that occur on other pages.
                 - Maximum 2 sentences for the story.
-                - Use the child's name ({child_name}) only if needed.
+                - Use the child's name ({child_name}) only on Page 1.
                 - Simple words a {child_age}-year-old understands.
                 - Cheerful and encouraging tone.
                 - Do NOT reference character appearance — that is handled elsewhere.
@@ -66,30 +96,37 @@ class HabitTasks:
             expected_output=f"A JSON object with exactly 4 keys: story, action, composition, details."
         )
 
-#     def illustration_task(self, agent, page_name: str, scenes_text: str, consistency_block: str, context_tasks: list):
-#         return Task(
-#             description=f"""Assemble the final image prompt by combining the CONSISTENCY DATA and the PAGE DETAILS provided by the Story Page Agent.
-#                 Do NOT invent anything. Format the output exactly as requested below.
-# 
-#                 === CONSISTENCY DATA ===
-#                 {consistency_block}
-# 
-#                 === PAGE DATA ===
-#                 Page: {page_name}
-#                 Scene(s): {scenes_text}
-# 
-#                 === OUTPUT FORMAT (output ONLY these 10 lines, nothing else. DO NOT ask the AI to generate text inside the image.) ===
-#                 SUBJECT: [copy CHARACTER value from CONSISTENCY DATA]
-#                 ACTION: [copy action value from Story Page Agent context]
-#                 ENVIRONMENT: [copy ENVIRONMENT value from CONSISTENCY DATA]
-#                 STYLE: [copy STYLE value from CONSISTENCY DATA]
-#                 LIGHTING: [copy LIGHTING value from CONSISTENCY DATA]
-#                 COMPOSITION: [copy composition value from Story Page Agent context]
-#                 DETAILS: [copy details value from Story Page Agent context]
-#                 QUALITY: [copy QUALITY value from CONSISTENCY DATA]
-#                 NEGATIVE_PROMPT: [copy NEGATIVE_PROMPT value from CONSISTENCY DATA]
-#                 GUIDELINES: [copy GUIDELINES value from CONSISTENCY DATA]""",
-#             agent=agent,
-#             expected_output="Exactly 10 lines starting with SUBJECT, no extra text.",
-#             context=context_tasks
-#         )
+    def illustration_task(self, agent, page_name: str, scenes_text: str, consistency_block: str, character_sheet: str, context_tasks: list):
+        """
+        Re-enabled in Phase 3 — assembles the final image prompt using both
+        the consistency block AND the new canonical character sheet.
+        """
+        return Task(
+            description=f"""Assemble the final image prompt by combining the CHARACTER SHEET, CONSISTENCY DATA, and PAGE DETAILS.
+                Do NOT invent anything. Format the output exactly as requested below.
+
+                === CHARACTER SHEET (canonical — use verbatim) ===
+                {character_sheet}
+
+                === CONSISTENCY DATA ===
+                {consistency_block}
+
+                === PAGE DATA ===
+                Page: {page_name}
+                Scene(s): {scenes_text}
+
+                === OUTPUT FORMAT (output ONLY these 10 lines, nothing else. DO NOT ask the AI to generate text inside the image.) ===
+                SUBJECT: [character sheet subject — name, age_desc, gender, skin_tone, hair, eyes, outfit, art_style combined into one sentence]
+                ACTION: [copy action value from Story Page Agent context]
+                ENVIRONMENT: [copy ENVIRONMENT value from CONSISTENCY DATA]
+                STYLE: [copy art_style from CHARACTER SHEET]
+                LIGHTING: [copy LIGHTING value from CONSISTENCY DATA]
+                COMPOSITION: [copy composition value from Story Page Agent context]
+                DETAILS: [copy details value from Story Page Agent context]
+                QUALITY: [copy QUALITY value from CONSISTENCY DATA]
+                NEGATIVE_PROMPT: [copy NEGATIVE_PROMPT value from CONSISTENCY DATA]
+                GUIDELINES: [copy GUIDELINES value from CONSISTENCY DATA]""",
+            agent=agent,
+            expected_output="Exactly 10 lines starting with SUBJECT, no extra text.",
+            context=context_tasks
+        )

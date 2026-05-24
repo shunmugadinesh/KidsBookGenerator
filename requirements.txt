@@ -6,4 +6,9 @@ httpx
 python-dotenv
 huggingface_hub
 litellm
+sqlalchemy
+alembic
+psycopg2-binary
+chromadb
+sentence-transformers
 

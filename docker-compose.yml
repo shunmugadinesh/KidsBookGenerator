@@ -12,6 +12,9 @@ services:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - postgres
+      - chromadb
 
   frontend:
     build:
@@ -25,5 +28,28 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8003
+      - BACKEND_URL=http://create-book-api:8003
     depends_on:
       - create-book-api
+
+  postgres:
+    image: postgres:16
+    container_name: ai_books_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_books
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: ai_books_chroma
+    restart: unless-stopped
+    ports:
+      - "8005:8000"
+    volumes:
+      - ./chroma_db:/data

@@ -1,36 +1,42 @@
-# Implementation Plan - Make Project Standalone
+# Implementation Plan - Project Asset Restoration & Spinner State Fix
 
-The goal is to decouple `KidsBookGenerator` from the `learn_ai` repository and external sibling directories, ensuring it can run independently using Docker or local development tools.
-
-## User Review Required
-
-> [!IMPORTANT]
-> The current `docker-compose.yml` contains services (`agent-api`, etc.) that point to external directories (`../agentic-llm`). These will be removed to keep the project standalone.
-> The backend port will be standardized to `8003` (or we can change to `8000` if preferred).
+This plan details the implementation of two key fixes:
+1. **Saved Assets Restoration**: Extending `/get-project/{project_id}` to fetch and return the project's saved images and videos, and updating `loadProjectFromDb` in the frontend to populate `habitGeneratedImages`, `generatedVideos`, and `fullBookVideoUrl`.
+2. **"Analyzing..." Spinner Fix**: Properly resetting the loading state when a vector DB similarity match is found so the generator button does not remain stuck on "Analyzing...", and ensuring the spinner is active if the user chooses to proceed with generation.
 
 ## Proposed Changes
 
-### Configuration
-
-#### [MODIFY] [docker-compose.yml](file:///c:/D-Drive/GitHub/KidsBookGenerator/docker-compose.yml)
-- Remove all commented-out external services.
-- Update `agent-book-api` build context to `.` (the current root).
-- Update volumes and env file paths to reflect the new standalone structure.
-- Add a `frontend` service for development.
-
-#### [MODIFY] [vite.config.js](file:///c:/D-Drive/GitHub/KidsBookGenerator/frontend/vite.config.js)
-- Update proxy target port from `8000` to `8003` to match the backend.
-
-### Backend
+### Backend Components
 
 #### [MODIFY] [main.py](file:///c:/D-Drive/GitHub/KidsBookGenerator/app/main.py)
-- Ensure static file mounting paths are robust.
+- In the `@app.get("/get-project/{project_id}")` endpoint:
+  - Query all `Image` and `Video` records associated with `project_id` sorted by ID ascending.
+  - Construct a dictionary mapping page names to image paths.
+  - Construct a dictionary mapping page names to video paths (excluding `"full_story"`).
+  - Extract the full book video path (where page name is `"full_story"` or `None`).
+  - Return `images`, `videos`, and `full_video` in the response JSON.
+
+---
+
+### Frontend Components
+
+#### [MODIFY] [App.jsx](file:///c:/D-Drive/GitHub/KidsBookGenerator/frontend/src/App.jsx)
+- In the `loadProjectFromDb` function:
+  - Extract `images`, `videos`, and `full_video` from the JSON response.
+  - Set the state variables `habitGeneratedImages`, `generatedVideos`, and `fullBookVideoUrl` with the retrieved values.
+- In the `proceedWithCorePlanGeneration` function:
+  - Set `setIsGeneratingHabitPlan(true)` at the start of the function to ensure the loading spinner turns on if triggered.
+- In the `handleGenerateCorePlan` function:
+  - If a similarity match is found in ChromaDB, call `setIsGeneratingHabitPlan(false)` before returning to reset the spinner state.
 
 ## Verification Plan
 
-### Automated Tests
-- Run `docker compose build` to ensure the image builds without external dependencies.
-- Run `docker compose up` and verify the frontend can communicate with the backend via the proxy.
+### Automated/Build Verification
+- Execute `npm run build` inside `frontend/` to ensure the compilation succeeds with no syntax or React errors.
 
 ### Manual Verification
-- Test image generation from the UI to ensure the proxy and backend endpoints are working correctly.
+- Start a new Habit project (e.g., "Wash Hands") and generate some page images and videos.
+- Click "Save Project to DB" to persist the assets to PostgreSQL.
+- Click "Close" in the Project Session manager to reset the state.
+- Select the project from the "Open Existing Project" dropdown and verify that the stories, page images, page videos, and full video are successfully restored and display correctly.
+- Start another project with the same title ("Wash Hands"). Verify the confirmation pop-up modal is displayed and the main button immediately resets from "Analyzing..." to "Generate Core Plan".

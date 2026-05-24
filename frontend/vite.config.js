@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const backendTarget = process.env.BACKEND_URL || 'http://127.0.0.1:8003';
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -10,15 +12,26 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
-      '/generate-image': 'http://create-book-api:8003',
-      '/generate-prompt': 'http://create-book-api:8003',
-      '/generate-book': 'http://create-book-api:8003',
-      '/generate-habit-chart': 'http://create-book-api:8003',
-      '/generate-audio-video': 'http://create-book-api:8003',
-      '/preview-voice': 'http://create-book-api:8003',
-      '/generated-media': 'http://create-book-api:8003',
-      '/book-data': 'http://create-book-api:8003',
-      '/compile-full-movie': 'http://create-book-api:8003',
+      '/generate-image': backendTarget,
+      '/generate-prompt': backendTarget,
+      '/generate-prompts': backendTarget,
+      '/generate-book': backendTarget,
+      '/generate-habit-chart': backendTarget,
+      '/generate-core-plan': backendTarget,
+      '/generate-story-pages': backendTarget,
+      '/generate-audio-video': backendTarget,
+      '/preview-voice': backendTarget,
+      '/generated-media': backendTarget,
+      '/book-data': backendTarget,
+      '/compile-full-movie': backendTarget,
+      '/search-similar': backendTarget,
+      '/save-agent-output': backendTarget,
+      '/update-review': backendTarget,
+      '/save-feedback': backendTarget,
+      '/get-project': backendTarget,
+      '/chroma-status': backendTarget,
+      '/save-project-assets': backendTarget,
+      '/list-projects': backendTarget,
     }
   }
 })

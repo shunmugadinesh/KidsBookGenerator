@@ -31,3 +31,14 @@ App_bkp.jsx
 *bkp.jsx
 
 old_main.py
+
+# Database and Data Volumes
+chroma_db/
+postgres_data/
+
+# Temporary and Scratch files
+scratch/
+
+# Uvicorn logs
+uvicorn_out.txt
+uvicorn_err.txt

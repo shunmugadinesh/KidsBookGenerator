@@ -12,9 +12,20 @@ def build_llm(model_provider: str = 'ollama') -> LLM:
             base_url="https://openrouter.ai/api/v1",
             api_key=os.getenv('OPENROUTER_API_KEY', '')
         )
+    model_name = os.getenv('OLLAMA_MODEL', 'qwen3:1.7b')
+    if not model_name.startswith('ollama/'):
+        model_name = f"ollama/{model_name}"
+        
+    _in_docker = os.path.exists("/.dockerenv")
+    default_base_url = 'http://host.docker.internal:11434' if _in_docker else 'http://localhost:11434'
+    base_url = os.getenv('OLLAMA_BASE_URL', default_base_url)
+    if not _in_docker and base_url == 'http://host.docker.internal:11434':
+        base_url = 'http://localhost:11434'
+        
     return LLM(
-        model=os.getenv('OLLAMA_MODEL', 'qwen3:1.7b'),
-        base_url=os.getenv('OLLAMA_BASE_URL', 'http://host.docker.internal:11434')
+        model=model_name,
+        base_url=base_url,
+        api_key="NA"
     )
 
 class HabitAgents:
@@ -26,6 +37,31 @@ class HabitAgents:
             role='Planner Agent',
             goal='Create a clear, sequential list of scenes for a kids habit book.',
             backstory='You plan short, simple scene descriptions for toddler habit training books. Keep each scene to 1 short sentence.',
+            llm=self.llm,
+            verbose=True,
+            allow_delegation=False
+        )
+
+    def character_sheet_agent(self) -> Agent:
+        """
+        NEW — Phase 3.
+        Generates a canonical character sheet ONCE per project.
+        Its output is stored in PostgreSQL and reused across every page prompt,
+        ensuring visual consistency without re-calling the LLM per page.
+        """
+        return Agent(
+            role='Character Sheet Agent',
+            goal=(
+                'Generate a definitive, canonical JSON character sheet that describes the child '
+                'protagonist visually. This single output will be reused on every book page to '
+                'guarantee character consistency.'
+            ),
+            backstory=(
+                'You are a character designer for childrens illustration books. '
+                'Given a child profile you produce a precise, reusable visual identity card. '
+                'You never invent details beyond what the profile provides. '
+                'Your output is used verbatim by image-generation prompts on every page.'
+            ),
             llm=self.llm,
             verbose=True,
             allow_delegation=False
