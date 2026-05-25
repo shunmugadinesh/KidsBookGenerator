@@ -85,8 +85,10 @@ RHYMES_DB: dict = {
             "Couldn't put Humpty together again."
         ),
         "stanzas": [
-            "Humpty Dumpty sat on a wall,\nHumpty Dumpty had a great fall.",
-            "All the king's horses and all the king's men\nCouldn't put Humpty together again.",
+            "Humpty Dumpty sat on a wall",
+            "Humpty Dumpty had a great fall",
+            "All the king's horses and all the king's men",
+            "Couldn't put Humpty together again",
         ],
         "char": "Humpty Dumpty, a large friendly egg character with arms, legs and a big smile",
         "theme": "fairytale castle adventure",

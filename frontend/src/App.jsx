@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Sparkles, BookOpen, Download, AlertCircle, Loader2, XCircle, FolderOpen } from 'lucide-react';
+import { Upload, Image as ImageIcon, Sparkles, BookOpen, Download, AlertCircle, Loader2, XCircle, FolderOpen, Music } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import AgentReviewPanel from './components/AgentReviewPanel';
@@ -163,6 +163,9 @@ export default function App() {
   const [selectedVoice, setSelectedVoice] = useState('en-US-AnaNeural');
   const [selectedBgm, setSelectedBgm] = useState('playful_toyland');
   const [customBgmPrompt, setCustomBgmPrompt] = useState('gentle bedtime piano loop, calming instrumental');
+  const [pageBgmEnabled, setPageBgmEnabled] = useState(false);
+  const [movieBgmModalOpen, setMovieBgmModalOpen] = useState(false);
+  const [movieBgm, setMovieBgm] = useState('calm_piano');
   const [isCompilingVideo, setIsCompilingVideo] = useState(false);
   const [generatedVideos, setGeneratedVideos] = useState({}); // mapping: pageKey -> videoUrl
   const [isCompilingFullVideo, setIsCompilingFullVideo] = useState(false);
@@ -775,7 +778,9 @@ export default function App() {
       throw new Error(`Story narration text cannot be empty for page ${pageKey}.`);
     }
 
-    const bgmValue = selectedBgm === 'ai_musicgen' ? customBgmPrompt : selectedBgm;
+    const bgmValue = pageBgmEnabled
+      ? (selectedBgm === 'ai_musicgen' ? customBgmPrompt : selectedBgm)
+      : 'none';
     const response = await fetch('/generate-audio-video', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -784,12 +789,20 @@ export default function App() {
         text: storyText,
         voice: selectedVoice,
         bgm: bgmValue,
-        page_key: pageKey
+        page_key: pageKey,
+        project_id: currentProjectId || null,
+        project_title: isBook ? "Alphabet Book" : isNumbers ? "Numbers Book" : habitTitle,
+        project_type: isBook ? "alphabet" : isNumbers ? "numbers" : appMode
       })
     });
 
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Video compilation failed");
+
+    if (data.project_id && !currentProjectId) {
+      setCurrentProjectId(data.project_id);
+      localStorage.setItem('current_project_id', data.project_id.toString());
+    }
 
     setGeneratedVideos(prev => ({ ...prev, [pageKey]: data.video_url }));
     return data.video_url;
@@ -809,7 +822,8 @@ export default function App() {
     }
   };
 
-  const handleCompileFullMovie = async () => {
+  const handleCompileFullMovie = async (chosenBgm = 'none') => {
+    setMovieBgmModalOpen(false);
     setIsCompilingFullVideo(true);
     setError(null);
     setAllProgress("Verifying page files...");
@@ -843,12 +857,16 @@ export default function App() {
         compiledFilenames.push(fname);
       }
 
-      // 3. Trigger backend instant concat merging
-      setAllProgress("Merging segments into continuous storybook movie...");
+      // 3. Trigger backend concat and mix merging
+      setAllProgress("Merging segments and mixing audio...");
       const response = await fetch('/compile-full-movie', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ video_filenames: compiledFilenames })
+        body: JSON.stringify({
+          video_filenames: compiledFilenames,
+          bgm: chosenBgm,
+          project_id: currentProjectId
+        })
       });
 
       const data = await response.json();
@@ -865,6 +883,10 @@ export default function App() {
     } finally {
       setIsCompilingFullVideo(false);
     }
+  };
+
+  const handleCompileFullMovieClick = () => {
+    setMovieBgmModalOpen(true);
   };
 
   const stopAllPreviews = () => {
@@ -1564,7 +1586,7 @@ export default function App() {
                 {/* Compile Full Movie — above Save Project */}
                 {Object.keys(activeGeneratedImages).length > 0 && (
                   <button
-                    onClick={handleCompileFullMovie}
+                    onClick={handleCompileFullMovieClick}
                     disabled={isCompilingFullVideo || isGeneratingAllActive}
                     className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
                       ${(isCompilingFullVideo || isGeneratingAllActive)
@@ -1767,7 +1789,7 @@ export default function App() {
                     {/* Compile Full Movie — above Save Project */}
                     {Object.keys(activeGeneratedImages).length > 0 && (
                       <button
-                        onClick={handleCompileFullMovie}
+                        onClick={handleCompileFullMovieClick}
                         disabled={isCompilingFullVideo || isGeneratingAllActive}
                         className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
                           ${(isCompilingFullVideo || isGeneratingAllActive)
@@ -2147,41 +2169,55 @@ export default function App() {
 
                     {/* BGM Selection */}
                     <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">2. Background Music</h4>
-                      <div className="flex gap-1.5">
-                        <select
-                          value={selectedBgm}
-                          onChange={(e) => setSelectedBgm(e.target.value)}
-                          className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none"
-                        >
-                          <option value="none">No Background Music</option>
-                          <option value="calm_piano">Bedtime Lullaby (Piano)</option>
-                          <option value="happy_ukulele">Preschool Joy (Ukulele)</option>
-                          <option value="magical_fairytale">Adventure (Fairytale)</option>
-                          <option value="playful_toyland">Whimsical (Toyland)</option>
-                          <option value="ai_musicgen">AI Generated Music</option>
-                        </select>
-                        {selectedBgm !== 'none' && selectedBgm !== 'ai_musicgen' && (
-                          <button
-                            onClick={() => handlePreviewBgm(selectedBgm)}
-                            className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingBgm === selectedBgm
-                              ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
-                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                              }`}
-                          >
-                            {playingBgm === selectedBgm ? 'Stop' : 'Listen'}
-                          </button>
-                        )}
-                      </div>
-                      {selectedBgm === 'ai_musicgen' && (
-                        <div className="mt-1.5">
-                          <textarea
-                            value={customBgmPrompt}
-                            onChange={(e) => setCustomBgmPrompt(e.target.value)}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg text-[10px] focus:ring-1 focus:ring-indigo-500 focus:outline-none h-12 resize-none"
-                            placeholder="e.g. calm soft acoustic guitar loop"
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Page-level Background Music</h4>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={pageBgmEnabled}
+                            onChange={(e) => setPageBgmEnabled(e.target.checked)}
+                            className="sr-only peer"
                           />
-                        </div>
+                          <div className="w-7 h-4 bg-rose-500 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                      </div>
+                      {pageBgmEnabled && (
+                        <>
+                          <div className="flex gap-1.5">
+                            <select
+                              value={selectedBgm}
+                              onChange={(e) => setSelectedBgm(e.target.value)}
+                              className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none"
+                            >
+                              <option value="calm_piano">Bedtime Lullaby (Piano)</option>
+                              <option value="happy_ukulele">Preschool Joy (Ukulele)</option>
+                              <option value="magical_fairytale">Adventure (Fairytale)</option>
+                              <option value="playful_toyland">Whimsical (Toyland)</option>
+                              <option value="ai_musicgen">AI Generated Music</option>
+                            </select>
+                            {selectedBgm !== 'ai_musicgen' && (
+                              <button
+                                onClick={() => handlePreviewBgm(selectedBgm)}
+                                className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingBgm === selectedBgm
+                                  ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                  }`}
+                              >
+                                {playingBgm === selectedBgm ? 'Stop' : 'Listen'}
+                              </button>
+                            )}
+                          </div>
+                          {selectedBgm === 'ai_musicgen' && (
+                            <div className="mt-1.5">
+                              <textarea
+                                value={customBgmPrompt}
+                                onChange={(e) => setCustomBgmPrompt(e.target.value)}
+                                className="w-full p-2 bg-white border border-slate-200 rounded-lg text-[10px] focus:ring-1 focus:ring-indigo-500 focus:outline-none h-12 resize-none"
+                                placeholder="e.g. calm soft acoustic guitar loop"
+                              />
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
 
@@ -2194,8 +2230,8 @@ export default function App() {
                           disabled={isCompilingVideo || !activeGeneratedImages[activePageKey]}
                           className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all mb-2
                             ${(isCompilingVideo || !activeGeneratedImages[activePageKey])
-                              ? 'bg-indigo-400 text-white cursor-not-allowed'
-                              : 'bg-indigo-650 hover:bg-indigo-700 text-white shadow-sm'}`}
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                              : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'}`}
                         >
                           {isCompilingVideo ? (
                             <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Compiling...</>
@@ -2318,6 +2354,73 @@ export default function App() {
                   setIsGeneratingHabitPlan(false);
                 }}
                 className="w-full py-2 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-650 transition-all text-center"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {movieBgmModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-100 p-6 transform transition-all">
+            <div className="flex items-center gap-3 text-indigo-650 mb-3">
+              <div className="p-2 bg-indigo-50 rounded-xl">
+                <Music className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">Add Movie Background Music?</h3>
+            </div>
+            <p className="text-xs text-slate-650 leading-relaxed mb-4">
+              Would you like to add background music to the entire compiled storybook movie?
+            </p>
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-5">
+              <span className="block text-[10px] uppercase font-bold text-slate-400 mb-2">Choose Background Music Track:</span>
+              <div className="flex flex-col gap-2">
+                {[
+                  { key: 'calm_piano', label: 'Bedtime Lullaby (Piano)' },
+                  { key: 'happy_ukulele', label: 'Preschool Joy (Ukulele)' },
+                  { key: 'magical_fairytale', label: 'Adventure (Fairytale)' },
+                  { key: 'playful_toyland', label: 'Whimsical (Toyland)' }
+                ].map((track) => (
+                  <div key={track.key} className="flex items-center justify-between p-2 bg-white border border-slate-100 rounded-lg shadow-sm">
+                    <label className="flex items-center gap-2 cursor-pointer flex-1">
+                      <input
+                        type="radio"
+                        name="movieBgm"
+                        value={track.key}
+                        checked={movieBgm === track.key}
+                        onChange={() => setMovieBgm(track.key)}
+                        className="text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-xs font-semibold text-slate-700">{track.label}</span>
+                    </label>
+                    <button
+                      onClick={() => handlePreviewBgm(track.key)}
+                      className={`px-3 py-1 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingBgm === track.key ? 'bg-rose-500 border-rose-500 text-white animate-pulse' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      {playingBgm === track.key ? 'Stop' : 'Listen'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleCompileFullMovie(movieBgm)}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all"
+              >
+                🎬 Compile with Selected Music
+              </button>
+              <button
+                onClick={() => handleCompileFullMovie('none')}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+              >
+                🔇 Compile without Music
+              </button>
+              <button
+                onClick={() => setMovieBgmModalOpen(false)}
+                className="w-full py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-semibold rounded-xl transition-all"
               >
                 Cancel
               </button>

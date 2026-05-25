@@ -28,6 +28,7 @@ temp/
 static/
 app/resources/voice
 app/resources/generated
+book_output
 App_bkp.jsx
 *bkp.jsx
 
@@ -43,3 +44,7 @@ scratch/
 # Uvicorn logs
 uvicorn_out.txt
 uvicorn_err.txt
+docs/implementation_plan.md
+docs/task.md
+docs/walkthrough.md
+scripts/migrate_media.py

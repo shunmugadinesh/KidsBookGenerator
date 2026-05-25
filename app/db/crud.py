@@ -95,12 +95,18 @@ def delete_project(db: Session, project_id: int, delete_files: bool = False) -> 
     if delete_files:
         import os
         for path in file_paths:
+            resolved_path = path
+            if path.startswith("/generated-media/"):
+                resolved_path = os.path.join("app", "resources", "generated", path.replace("/generated-media/", ""))
+            elif path.startswith("/book-output/"):
+                resolved_path = os.path.join("book_output", path.replace("/book-output/", ""))
+                
             try:
-                if os.path.isfile(path):
-                    os.remove(path)
-                    logger.info(f"Deleted file: {path}")
+                if os.path.isfile(resolved_path):
+                    os.remove(resolved_path)
+                    logger.info(f"Deleted file: {resolved_path}")
             except Exception as e:
-                logger.warning(f"Could not delete file {path}: {e}")
+                logger.warning(f"Could not delete file {resolved_path}: {e}")
 
     logger.info(f"Deleted project id={project_id} (delete_files={delete_files})")
     return True

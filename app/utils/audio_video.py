@@ -98,17 +98,18 @@ def ensure_bgm_preset(preset_name):
         
     print(f"BGM Cache: Downloading preset '{preset_name}' on demand...")
     url = presets[preset_name]
-    import ssl
-    context = ssl._create_unverified_context()
+    temp_file_path = file_path + ".tmp"
     
     try:
-        req = urllib.request.Request(
-            url, 
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        )
-        temp_file_path = file_path + ".tmp"
-        with urllib.request.urlopen(req, context=context) as response, open(temp_file_path, 'wb') as out_file:
-            out_file.write(response.read())
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        with httpx.Client(verify=False) as client:
+            with client.stream("GET", url, headers=headers, timeout=60.0) as r:
+                if r.status_code == 200:
+                    with open(temp_file_path, 'wb') as out_file:
+                        for chunk in r.iter_bytes(chunk_size=1024*1024):
+                            out_file.write(chunk)
+                else:
+                    raise Exception(f"HTTP Status Code {r.status_code}")
             
         if os.path.exists(temp_file_path) and os.path.getsize(temp_file_path) > 100000:
             if os.path.exists(file_path):
@@ -240,7 +241,7 @@ def generate_tts(text, voice_name, output_path, elevenlabs_api_key=None):
         print("TTS: Edge TTS speech generated successfully.")
         return True
 
-def compile_story_video(image_data_uri_or_path, text, voice, bgm_option, hf_token=None, elevenlabs_api_key=None, page_key=None):
+def compile_story_video(image_data_uri_or_path, text, voice, bgm_option, hf_token=None, elevenlabs_api_key=None, page_key=None, project_id_name=None):
     """
     Orchestrates the entire voice, background music, and video synthesis pipeline.
     1. Decodes and saves the input image (handles local path or Base64 URI).
@@ -251,8 +252,12 @@ def compile_story_video(image_data_uri_or_path, text, voice, bgm_option, hf_toke
     Returns the absolute path to the generated MP4 video.
     """
     # 1. Initialize Paths & Directories
-    gen_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "resources", "generated"))
-    voice_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "resources", "voice"))
+    if project_id_name:
+        gen_dir = os.path.abspath(os.path.join("book_output", project_id_name, "video"))
+        voice_dir = os.path.abspath(os.path.join("book_output", project_id_name, "voice"))
+    else:
+        gen_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "resources", "generated"))
+        voice_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "resources", "voice"))
     os.makedirs(gen_dir, exist_ok=True)
     os.makedirs(voice_dir, exist_ok=True)
     

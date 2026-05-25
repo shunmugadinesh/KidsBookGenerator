@@ -25,7 +25,7 @@ from app.resources.data import NUMBERS_DATA
 from app.crew_ai.agents import AlphabetAgents
 from app.crew_ai.tasks import AlphabetTasks
 from crewai import Crew, Process
-from app.utils.audio_video import compile_story_video, ensure_ffmpeg
+from app.utils.audio_video import compile_story_video, ensure_ffmpeg, ensure_bgm_preset
 
 # Phase 3 — DB
 from app.db.connection import engine, get_db, Base
@@ -57,6 +57,10 @@ app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets
 # Ensure generated directory exists and mount it to serve static MP4 files
 os.makedirs("app/resources/generated", exist_ok=True)
 app.mount("/generated-media", StaticFiles(directory="app/resources/generated"), name="generated-media")
+
+# Ensure book_output directory exists and mount it to serve static MP4 and audio files
+os.makedirs("book_output", exist_ok=True)
+app.mount("/book-output", StaticFiles(directory="book_output"), name="book-output")
 
 @app.get("/")
 def read_root():
@@ -411,11 +415,41 @@ def generate_habit_chart(body: HabitChartRequest):
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
 
+def get_project_id_name(project_id: int, project_title: str) -> str:
+    import re
+    clean_title = re.sub(r'[^a-zA-Z0-9]', '_', project_title.strip().lower())
+    clean_title = re.sub(r'_+', '_', clean_title).strip('_')
+    if not clean_title:
+        clean_title = "project"
+    return f"project_{project_id}_{clean_title}"
+
+
+
+
 @app.post("/generate-audio-video")
-async def generate_audio_video_endpoint(request: AudioVideoRequest):
+async def generate_audio_video_endpoint(request: AudioVideoRequest, db: Session = Depends(get_db)):
     try:
         hf_token = os.getenv("HUGGING_API_KEY") or os.getenv("HF_TOKEN")
         eleven_key = os.getenv("ELEVENLABS_API_KEY")
+        
+        project_id = request.project_id
+        project_title = request.project_title or "Untitled Book"
+        project_type = request.project_type or "habit_book"
+        
+        # Auto-create project if not provided
+        if not project_id:
+            project = crud.create_project(db, title=project_title, project_type=project_type)
+            project_id = project.id
+        else:
+            project = crud.get_project(db, project_id)
+            if not project:
+                project = crud.create_project(db, title=project_title, project_type=project_type)
+                project_id = project.id
+            else:
+                project_title = project.title
+                project_type = project.project_type
+                
+        project_id_name = get_project_id_name(project_id, project_title)
         
         video_path = compile_story_video(
             image_data_uri_or_path=request.image,
@@ -424,16 +458,18 @@ async def generate_audio_video_endpoint(request: AudioVideoRequest):
             bgm_option=request.bgm,
             hf_token=hf_token,
             elevenlabs_api_key=eleven_key,
-            page_key=request.page_key
+            page_key=request.page_key,
+            project_id_name=project_id_name
         )
         
         filename = os.path.basename(video_path)
-        video_url = f"/generated-media/{filename}"
+        video_url = f"/book-output/{project_id_name}/video/{filename}"
         
         return {
             "status": "success",
             "video_url": video_url,
-            "filename": filename
+            "filename": filename,
+            "project_id": project_id
         }
     except Exception as e:
         print(f"AUDIO_VIDEO_GENERATION ERROR: {e}")
@@ -469,23 +505,36 @@ def get_book_data_endpoint():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/compile-full-movie")
-def compile_full_movie_endpoint(request: FullMovieRequest):
+def compile_full_movie_endpoint(request: FullMovieRequest, db: Session = Depends(get_db)):
     try:
         import uuid
         import subprocess
         
-        gen_dir = os.path.abspath("app/resources/generated")
+        project_id_name = None
+        if request.project_id:
+            project = crud.get_project(db, request.project_id)
+            if project:
+                project_id_name = get_project_id_name(project.id, project.title)
+                
+        if project_id_name:
+            segment_dir = os.path.abspath(os.path.join("book_output", project_id_name, "video"))
+            movie_dir = os.path.abspath(os.path.join("book_output", project_id_name, "movie"))
+        else:
+            segment_dir = os.path.abspath("app/resources/generated")
+            movie_dir = os.path.abspath("app/resources/generated")
+            
+        os.makedirs(movie_dir, exist_ok=True)
         output_filename = f"full_storybook_movie_{uuid.uuid4().hex[:8]}.mp4"
-        output_path = os.path.join(gen_dir, output_filename)
+        output_path = os.path.join(movie_dir, output_filename)
         
-        # 1. Verify that all listed files exist in app/resources/generated
+        # 1. Verify that all listed files exist
         valid_paths = []
         for fname in request.video_filenames:
             if not fname:
                 continue
             # Prevent directory traversal attacks
             safe_fname = os.path.basename(fname)
-            fpath = os.path.join(gen_dir, safe_fname)
+            fpath = os.path.join(segment_dir, safe_fname)
             if not os.path.exists(fpath):
                 raise FileNotFoundError(f"Required page video segment not found: {safe_fname}. Please compile this page first!")
             valid_paths.append(fpath)
@@ -494,7 +543,7 @@ def compile_full_movie_endpoint(request: FullMovieRequest):
             raise ValueError("No video segments provided to compile.")
             
         # 2. Write the dynamic concat listing file
-        list_file_path = os.path.join(gen_dir, f"concat_list_{uuid.uuid4().hex[:8]}.txt")
+        list_file_path = os.path.join(movie_dir, f"concat_list_{uuid.uuid4().hex[:8]}.txt")
         with open(list_file_path, "w", encoding="utf-8") as f:
             for p in valid_paths:
                 # Standard FFmpeg syntax requires forward slashes even on Windows!
@@ -504,25 +553,69 @@ def compile_full_movie_endpoint(request: FullMovieRequest):
         try:
             # 3. Call FFmpeg to merge clips instantly using the direct stream copy code
             ffmpeg_bin = ensure_ffmpeg()
-            cmd = [
-                ffmpeg_bin, "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", list_file_path,
-                "-c", "copy",  # Fast stream copy without re-encoding!
-                output_path
-            ]
             
-            print(f"FFmpeg Merge Run: {' '.join(cmd)}")
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            
-            if result.returncode != 0:
-                raise Exception(f"FFmpeg merge execution failed: {result.stderr}")
+            if request.bgm and request.bgm != "none":
+                # Concatenate segments into a temporary video file first
+                temp_concat_filename = f"temp_concat_{uuid.uuid4().hex[:8]}.mp4"
+                temp_concat_path = os.path.join(movie_dir, temp_concat_filename)
+                
+                cmd_concat = [
+                    ffmpeg_bin, "-y",
+                    "-f", "concat",
+                    "-safe", "0",
+                    "-i", list_file_path,
+                    "-c", "copy",
+                    temp_concat_path
+                ]
+                print(f"FFmpeg Concat Run: {' '.join(cmd_concat)}")
+                result_concat = subprocess.run(cmd_concat, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if result_concat.returncode != 0:
+                    raise Exception(f"FFmpeg concat failed: {result_concat.stderr}")
+                    
+                bgm_path = ensure_bgm_preset(request.bgm)
+                if bgm_path and os.path.exists(bgm_path):
+                    cmd_mix = [
+                        ffmpeg_bin, "-y",
+                        "-i", temp_concat_path,
+                        "-stream_loop", "-1", "-i", bgm_path,
+                        "-filter_complex", "[0:a]volume=1.0[v_audio];[1:a]volume=0.25[bgm_audio];[v_audio][bgm_audio]amix=inputs=2:duration=first:dropout_transition=2[mixed_audio]",
+                        "-map", "0:v", "-map", "[mixed_audio]",
+                        "-c:v", "copy",
+                        "-c:a", "aac", "-b:a", "192k",
+                        output_path
+                    ]
+                    print(f"FFmpeg BGM Mix Run: {' '.join(cmd_mix)}")
+                    result_mix = subprocess.run(cmd_mix, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    try:
+                        os.remove(temp_concat_path)
+                    except Exception:
+                        pass
+                    if result_mix.returncode != 0:
+                        raise Exception(f"FFmpeg BGM mixing failed: {result_mix.stderr}")
+                else:
+                    os.rename(temp_concat_path, output_path)
+            else:
+                cmd = [
+                    ffmpeg_bin, "-y",
+                    "-f", "concat",
+                    "-safe", "0",
+                    "-i", list_file_path,
+                    "-c", "copy",
+                    output_path
+                ]
+                print(f"FFmpeg Merge Run: {' '.join(cmd)}")
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if result.returncode != 0:
+                    raise Exception(f"FFmpeg merge execution failed: {result.stderr}")
                 
             print(f"Full movie compiled successfully: {output_path}")
+            if project_id_name:
+                video_url = f"/book-output/{project_id_name}/movie/{output_filename}"
+            else:
+                video_url = f"/generated-media/{output_filename}"
             return {
                 "status": "success",
-                "video_url": f"/generated-media/{output_filename}",
+                "video_url": video_url,
                 "filename": output_filename
             }
         finally:
@@ -649,10 +742,35 @@ def get_project_endpoint(project_id: int, db: Session = Depends(get_db)):
     videos = db.query(Video).filter(Video.project_id == project_id).order_by(Video.id.asc()).all()
 
     images_dict = {img.page_name: img.image_path for img in images}
-    videos_dict = {vid.page_name: vid.video_path for vid in videos if vid.page_name != "full_story"}
+    
+    videos_dict = {}
+    for vid in videos:
+        if vid.page_name == "full_story":
+            continue
+        path = vid.video_path
+        if not path:
+            continue
+        resolved_path = path
+        if path.startswith("/generated-media/"):
+            resolved_path = os.path.join("app", "resources", "generated", path.replace("/generated-media/", ""))
+        elif path.startswith("/book-output/"):
+            resolved_path = os.path.join("book_output", path.replace("/book-output/", ""))
+        
+        if os.path.isfile(resolved_path):
+            videos_dict[vid.page_name] = vid.video_path
 
     full_video_rec = next((vid for vid in videos if vid.page_name in ("full_story", None)), None)
-    full_video = full_video_rec.video_path if full_video_rec else None
+    full_video = None
+    if full_video_rec and full_video_rec.video_path:
+        path = full_video_rec.video_path
+        resolved_path = path
+        if path.startswith("/generated-media/"):
+            resolved_path = os.path.join("app", "resources", "generated", path.replace("/generated-media/", ""))
+        elif path.startswith("/book-output/"):
+            resolved_path = os.path.join("book_output", path.replace("/book-output/", ""))
+            
+        if os.path.isfile(resolved_path):
+            full_video = full_video_rec.video_path
 
     return {
         "project_id": project.id,

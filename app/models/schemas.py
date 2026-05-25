@@ -36,9 +36,14 @@ class AudioVideoRequest(BaseModel):
     voice: str = "en-US-AriaNeural"  # Microsoft Edge Voice ID or 'gtts' / 'eleven_...'
     bgm: str = "none"          # BGM preset key or custom prompt
     page_key: str = "Page 1"   # Page key for logging reference
+    project_id: Optional[int] = None
+    project_title: Optional[str] = "Untitled Book"
+    project_type: Optional[str] = "habit_book"
 
 class FullMovieRequest(BaseModel):
     video_filenames: list[str]
+    bgm: Optional[str] = "none"
+    project_id: Optional[int] = None
 
 # ---------------------------------------------------------------------------
 # Phase 3 — DB / Review / Rating schemas

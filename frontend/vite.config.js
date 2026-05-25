@@ -36,6 +36,7 @@ export default defineConfig({
       '/numbers-data': backendTarget,
       '/customize-alphabet': backendTarget,
       '/rhyme-presets': backendTarget,
+      '/book-output': backendTarget,
     }
   }
 })
