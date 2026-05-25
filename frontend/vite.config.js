@@ -32,6 +32,10 @@ export default defineConfig({
       '/chroma-status': backendTarget,
       '/save-project-assets': backendTarget,
       '/list-projects': backendTarget,
+      '/delete-project': backendTarget,
+      '/numbers-data': backendTarget,
+      '/customize-alphabet': backendTarget,
+      '/rhyme-presets': backendTarget,
     }
   }
 })

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
 
 class ChildProfile(BaseModel):
     name: str = "rithvin"
@@ -50,10 +50,15 @@ class CorePlanRequest(BaseModel):
     total_pages: int = 3
     child_profile: Optional[ChildProfile] = None
     text_model: str = 'ollama'
+    # Phase 4 fields
+    product_type: str = 'habit_book'   # 'habit_book' | 'rhyme' | 'story'
+    rhyme_key: Optional[str] = None    # preset rhyme key from RHYMES_DB (rhyme mode)
+    custom_text: Optional[str] = None  # custom rhyme stanzas or story concept text
 
 class StoryPagesRequest(BaseModel):
     project_id: int
     text_model: str = 'ollama'
+    product_type: str = 'habit_book'   # 'habit_book' | 'rhyme' | 'story'
 
 class SimilaritySearchRequest(BaseModel):
     topic: str
@@ -82,9 +87,16 @@ class FeedbackRequest(BaseModel):
     is_book_level: bool = False   # True → auto-rate all pages for the project
 
 class SaveProjectAssetsRequest(BaseModel):
-    project_id: int
+    project_id: Optional[int] = None
+    project_title: Optional[str] = "Untitled Book"
+    project_type: Optional[str] = "habit_book"
     stories: Dict[str, str]
     prompts: Dict[str, str]
     images: Dict[str, str]
     videos: Dict[str, str]
     full_video: Optional[str] = None
+
+class CustomizeAlphabetRequest(BaseModel):
+    item: str
+    word: str
+    text_model: str = 'ollama'

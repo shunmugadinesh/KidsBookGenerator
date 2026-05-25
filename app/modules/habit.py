@@ -5,6 +5,7 @@ from crewai import Crew, Process
 from app.crew_ai.agents import HabitAgents
 from app.crew_ai.tasks import HabitTasks
 from app.utils.prompts import text_to_image_prompt
+from app.models.schemas import ChildProfile
 
 class HabitChartOrchestrator:
     def __init__(self, chart_title, total_scenes=3, total_pages=3, child_profile=None, text_model='ollama'):
@@ -14,12 +15,10 @@ class HabitChartOrchestrator:
         if self.total_pages > self.total_scenes:
             self.total_pages = self.total_scenes
             
-        self.child_profile = child_profile or {
-            "name": "rithvin", "age": 3, "language": "english", "gender": "boy",
-            "skin_tone": "fair skin", "hair_color": "black", "hair_style": "short curly",
-            "eye_color": "dark brown", "outfit_color": "bright red",
-            "style": "Pixar-style illustration", "lighting": "soft lighting"
-        }
+        default_profile = ChildProfile().model_dump()
+        self.child_profile = default_profile.copy()
+        if child_profile:
+            self.child_profile.update({k: v for k, v in child_profile.items() if v is not None})
         
         self.agents_factory = HabitAgents(text_model)
         self.tasks_factory = HabitTasks(chart_title)

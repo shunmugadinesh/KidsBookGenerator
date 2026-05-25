@@ -148,7 +148,10 @@ export default function AgentReviewPanel({
   onSave,
   isGeneratingPages = false,
   pagesGeneratedCount = 0,
-  similarityInfo = null
+  similarityInfo = null,
+  onStop,
+  totalPages = 0,
+  textModel = 'ollama'
 }) {
   if (!isOpen) return null;
 
@@ -157,6 +160,11 @@ export default function AgentReviewPanel({
     if (onSave) {
       onSave(section, data);
     }
+  };
+
+  const TEXT_MODEL_LABELS = {
+    ollama: 'Ollama',
+    openrouter: 'OpenRouter'
   };
 
   return (
@@ -300,30 +308,90 @@ export default function AgentReviewPanel({
           justifyContent: 'flex-end',
           gap: 12
         }}>
-          {onConfirm && pagesGeneratedCount === 0 && (
-            <button
-              onClick={onConfirm}
-              disabled={isGeneratingPages || !agentOutputs.scene_plan?.id}
-              style={{
-                padding: '12px 28px',
-                borderRadius: 12,
-                border: 'none',
-                background: agentOutputs.scene_plan?.id ? '#6366f1' : '#cbd5e1',
-                color: '#fff',
-                fontWeight: 800,
-                fontSize: 14,
-                cursor: agentOutputs.scene_plan?.id && !isGeneratingPages ? 'pointer' : 'not-allowed',
-                boxShadow: agentOutputs.scene_plan?.id ? '0 4px 12px rgba(99, 102, 241, 0.35)' : 'none',
-                transition: 'all 0.15s'
-              }}
-            >
-              {isGeneratingPages ? '⏳ Generating Story Pages...' : '🚀 Confirm & Generate Story Pages'}
-            </button>
-          )}
-          {pagesGeneratedCount > 0 && (
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
-              ✓ {pagesGeneratedCount} Pages Generated &amp; Confirmed!
-            </span>
+          {isGeneratingPages ? (
+            <>
+              <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: '#6366f1',
+                  animation: 'pulse 1.5s infinite'
+                }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>
+                  Generating Pages ({TEXT_MODEL_LABELS[textModel] || textModel}): {pagesGeneratedCount} {totalPages ? `/ ${totalPages}` : ''}
+                </span>
+              </div>
+              {onStop && (
+                <button
+                  onClick={onStop}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  🛑 Stop Generation
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              {pagesGeneratedCount === 0 ? (
+                onConfirm && (
+                  <button
+                    onClick={onConfirm}
+                    disabled={!agentOutputs.scene_plan?.id}
+                    style={{
+                      padding: '12px 28px',
+                      borderRadius: 12,
+                      border: 'none',
+                      background: agentOutputs.scene_plan?.id ? '#6366f1' : '#cbd5e1',
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: 14,
+                      cursor: agentOutputs.scene_plan?.id ? 'pointer' : 'not-allowed',
+                      boxShadow: agentOutputs.scene_plan?.id ? '0 4px 12px rgba(99, 102, 241, 0.35)' : 'none',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    🚀 Confirm &amp; Generate Story Pages
+                  </button>
+                )
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
+                    ✓ {pagesGeneratedCount} Pages Generated &amp; Confirmed!
+                  </span>
+                  {onConfirm && (
+                    <button
+                      onClick={onConfirm}
+                      disabled={!agentOutputs.scene_plan?.id}
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: 10,
+                        border: '1.5px solid #6366f1',
+                        background: '#fff',
+                        color: '#6366f1',
+                        fontWeight: 800,
+                        fontSize: 13,
+                        cursor: agentOutputs.scene_plan?.id ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      🔄 Regenerate Pages
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -333,6 +401,11 @@ export default function AgentReviewPanel({
         @keyframes fadeInScale {
           from { opacity: 0; transform: translate(-50%, -47%) scale(0.96); }
           to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes pulse {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
         }
       `}</style>
     </>

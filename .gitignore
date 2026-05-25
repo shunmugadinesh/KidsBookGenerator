@@ -26,7 +26,8 @@ multi_agent_crewai/
 z_workouts/
 temp/
 static/
-app/resources/*
+app/resources/voice
+app/resources/generated
 App_bkp.jsx
 *bkp.jsx
 

@@ -58,6 +58,54 @@ def update_project_chroma_id(db: Session, project_id: int, chroma_doc_id: str) -
         db.commit()
 
 
+def delete_project(db: Session, project_id: int, delete_files: bool = False) -> bool:
+    """
+    Deletes a project and all its related DB rows in safe cascade order:
+      ratings → videos → images → agent_outputs → stories → project
+
+    If delete_files=True, also removes image/video files from disk after a
+    successful DB commit. Returns True if deleted, False if project not found.
+    """
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return False
+
+    # Collect file paths BEFORE deleting rows (needed if delete_files=True)
+    file_paths: List[str] = []
+    if delete_files:
+        images = db.query(Image).filter(Image.project_id == project_id).all()
+        videos = db.query(Video).filter(Video.project_id == project_id).all()
+        for img in images:
+            if img.image_path:
+                file_paths.append(img.image_path)
+        for vid in videos:
+            if vid.video_path:
+                file_paths.append(vid.video_path)
+
+    # Delete child rows in dependency order
+    db.query(Rating).filter(Rating.project_id == project_id).delete()
+    db.query(Video).filter(Video.project_id == project_id).delete()
+    db.query(Image).filter(Image.project_id == project_id).delete()
+    db.query(AgentOutput).filter(AgentOutput.project_id == project_id).delete()
+    db.query(Story).filter(Story.project_id == project_id).delete()
+    db.delete(project)
+    db.commit()
+
+    # Remove physical files from disk after successful DB commit
+    if delete_files:
+        import os
+        for path in file_paths:
+            try:
+                if os.path.isfile(path):
+                    os.remove(path)
+                    logger.info(f"Deleted file: {path}")
+            except Exception as e:
+                logger.warning(f"Could not delete file {path}: {e}")
+
+    logger.info(f"Deleted project id={project_id} (delete_files={delete_files})")
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Story
 # ---------------------------------------------------------------------------

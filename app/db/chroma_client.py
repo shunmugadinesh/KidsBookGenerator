@@ -93,6 +93,7 @@ def search_similar_story(
         results = collection.query(
             query_texts=[query_text],
             n_results=n_results,
+            where={"product_type": product_type},
             include=["documents", "metadatas", "distances"]
         )
 
@@ -202,3 +203,20 @@ def is_available() -> bool:
     """Quick health check — returns True if ChromaDB is reachable."""
     client = _get_client()
     return client is not None
+
+
+def delete_document(doc_id: str) -> bool:
+    """
+    Removes a story embedding from the story_templates collection by doc_id.
+    Returns True on success, False if ChromaDB is unavailable or doc not found.
+    """
+    collection = _get_or_create_collection("story_templates")
+    if collection is None:
+        return False
+    try:
+        collection.delete(ids=[doc_id])
+        logger.info(f"ChromaDB: deleted story embedding id={doc_id}")
+        return True
+    except Exception as e:
+        logger.warning(f"ChromaDB delete error for doc_id={doc_id}: {e}")
+        return False

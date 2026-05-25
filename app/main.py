@@ -10,11 +10,21 @@ from app.models.schemas import (
     AudioVideoRequest, FullMovieRequest,
     # Phase 3
     SimilaritySearchRequest, SaveAgentOutputRequest, ReviewUpdateRequest, FeedbackRequest,
-    CorePlanRequest, StoryPagesRequest, SaveProjectAssetsRequest
+    CorePlanRequest, StoryPagesRequest, SaveProjectAssetsRequest,
+    # Phase 4 Customization
+    CustomizeAlphabetRequest,
+    ChildProfile
 )
 from app.utils.image_generator import generate_image
 from app.modules.book import get_letters_prompts
 from app.modules.habit import HabitChartOrchestrator
+from app.modules.rhyme import RhymeOrchestrator      # Phase 4
+from app.modules.story import StoryOrchestrator      # Phase 4
+from app.resources.rhymes import RHYMES_DB, get_rhyme_list  # Phase 4
+from app.resources.data import NUMBERS_DATA
+from app.crew_ai.agents import AlphabetAgents
+from app.crew_ai.tasks import AlphabetTasks
+from crewai import Crew, Process
 from app.utils.audio_video import compile_story_video, ensure_ffmpeg
 
 # Phase 3 — DB
@@ -65,29 +75,119 @@ def generate_prompts_endpoint(request: BookPromptRequest):
     prompts_data = get_letters_prompts(request.profile, request.letter)
     return {"prompts": prompts_data}
 
+@app.get("/rhyme-presets")
+def rhyme_presets_endpoint():
+    """Returns the list of built-in nursery rhyme presets for the frontend dropdown."""
+    return {"rhymes": get_rhyme_list()}
+
+@app.get("/numbers-data")
+def numbers_data_endpoint():
+    """Returns the data for the numbers mode."""
+    return NUMBERS_DATA
+
+@app.post("/customize-alphabet")
+def customize_alphabet_endpoint(request: CustomizeAlphabetRequest):
+    """Generates custom scene and fact for a specific alphabet or number."""
+    try:
+        agents = AlphabetAgents(text_model=request.text_model)
+        tasks = AlphabetTasks()
+        
+        customization_agent = agents.customization_agent()
+        customization_task = tasks.customization_task(customization_agent, request.item, request.word)
+        
+        crew = Crew(
+            agents=[customization_agent],
+            tasks=[customization_task],
+            process=Process.sequential,
+            verbose=True
+        )
+        
+        result_str = str(crew.kickoff())
+        start_idx = result_str.find('{')
+        end_idx = result_str.rfind('}')
+        
+        if start_idx != -1 and end_idx != -1:
+            json_str = result_str[start_idx:end_idx+1]
+            return json.loads(json_str)
+        else:
+            raise ValueError(f"Could not parse JSON from output: {result_str}")
+            
+    except Exception as e:
+        logger.error(f"Error in /customize-alphabet: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/generate-core-plan")
 def generate_core_plan_endpoint(request: CorePlanRequest, db: Session = Depends(get_db)):
-    profile_dict = request.child_profile.model_dump() if request.child_profile else None
-    
-    orchestrator = HabitChartOrchestrator(
-        chart_title=request.title,
-        total_scenes=request.total_scenes,
-        total_pages=request.total_pages,
-        child_profile=profile_dict,
-        text_model=request.text_model
-    )
-    
-    # 1. Run planning + consistency
-    pages_data, consistency_data = orchestrator._setup()
-    
-    # 2. Save to database (Auto-create project)
+    """
+    Phase 4 — Routes to the correct orchestrator based on product_type:
+      habit_book : HabitChartOrchestrator
+      rhyme      : RhymeOrchestrator (preset or custom rhyme text)
+      story      : StoryOrchestrator (custom story topic)
+    """
+    profile_dict = (request.child_profile or ChildProfile()).model_dump()
+    product_type = request.product_type or "habit_book"
+
+    # ---- Determine orchestrator and run setup ----
+    if product_type == "rhyme":
+        # Resolve rhyme data: preset key takes priority over custom text
+        if request.rhyme_key and request.rhyme_key in RHYMES_DB:
+            rhyme_data = RHYMES_DB[request.rhyme_key]
+        elif request.custom_text:
+            # Build a minimal rhyme_data dict from custom text
+            rhyme_data = {
+                "title": request.title,
+                "text": request.custom_text,
+                "stanzas": [],   # will be split programmatically
+                "char": "the main character of the rhyme",
+                "theme": "nursery rhyme adventure",
+                "style_palette": "bright primary colours, vibrant storybook palette",
+            }
+        else:
+            raise HTTPException(status_code=422, detail="Rhyme mode requires either rhyme_key or custom_text.")
+
+        orchestrator = RhymeOrchestrator(
+            rhyme_data=rhyme_data,
+            total_pages=request.total_pages,
+            child_profile=profile_dict,
+            text_model=request.text_model,
+        )
+        pages_data, consistency_data = orchestrator.setup_for_db()
+
+    elif product_type == "story":
+        story_prompt = request.custom_text or request.title
+        orchestrator = StoryOrchestrator(
+            story_title=request.title,
+            story_prompt=story_prompt,
+            total_pages=request.total_pages,
+            child_profile=profile_dict,
+            text_model=request.text_model,
+        )
+        pages_data, consistency_data = orchestrator.setup_for_db()
+
+    else:  # habit_book (default — preserves Phase 3 behaviour)
+        orchestrator = HabitChartOrchestrator(
+            chart_title=request.title,
+            total_scenes=request.total_scenes,
+            total_pages=request.total_pages,
+            child_profile=profile_dict,
+            text_model=request.text_model,
+        )
+        pages_data, consistency_data = orchestrator._setup()
+
+    # ---- Persist to DB ----
     project = crud.create_project(
         db,
         title=request.title,
-        project_type="habit_book",
-        config_dict=profile_dict
+        project_type=product_type,
+        config_dict={
+            **(profile_dict or {}),
+            "product_type": product_type,
+            "rhyme_key": request.rhyme_key,
+            "custom_text": request.custom_text,
+        }
     )
-    
+
     scene_plan_output = crud.save_agent_output(
         db,
         project_id=project.id,
@@ -95,7 +195,7 @@ def generate_core_plan_endpoint(request: CorePlanRequest, db: Session = Depends(
         agent_role="Planner Agent",
         raw_output={"scenes_data": pages_data}
     )
-    
+
     character_sheet_output = crud.save_agent_output(
         db,
         project_id=project.id,
@@ -103,9 +203,10 @@ def generate_core_plan_endpoint(request: CorePlanRequest, db: Session = Depends(
         agent_role="Character Sheet Agent",
         raw_output=consistency_data
     )
-    
+
     return {
         "project_id": project.id,
+        "product_type": product_type,
         "scene_plan": {
             "id": scene_plan_output.id,
             "data": {"scenes_data": pages_data}
@@ -122,7 +223,7 @@ def generate_story_pages_endpoint(request: StoryPagesRequest, db: Session = Depe
     project = crud.get_project(db, request.project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     outputs = crud.get_agent_outputs_for_project(db, request.project_id)
     scene_plan = None
     character_sheet = None
@@ -131,67 +232,158 @@ def generate_story_pages_endpoint(request: StoryPagesRequest, db: Session = Depe
             scene_plan = o.get_effective_output()
         elif o.page_name == "character_sheet":
             character_sheet = o.get_effective_output()
-            
+
     if not scene_plan or not character_sheet:
         raise HTTPException(status_code=400, detail="Core plan not found or not yet reviewed.")
-        
+
     pages_data = scene_plan.get("scenes_data", {})
-    consistency_data = character_sheet
-    
-    config_dict = json.loads(project.config_json) if project.config_json else None
-    orchestrator = HabitChartOrchestrator(
-        chart_title=project.title,
-        total_scenes=len(pages_data),
-        total_pages=len(pages_data),
-        child_profile=config_dict,
-        text_model=request.text_model
-    )
-    
+    config_dict = json.loads(project.config_json) if project.config_json else {}
+    product_type = request.product_type or config_dict.get("product_type", "habit_book")
+
+    def _sorted_keys(d: dict) -> list:
+        return sorted(d.keys(), key=lambda k: int(k.split()[1]) if len(k.split()) > 1 else 0)
+
     def stream():
         try:
             yield json.dumps({"type": "meta", "total": len(pages_data)}) + "\n"
-            
-            sorted_keys = sorted(pages_data.keys(), key=lambda k: int(k.split()[1]) if len(k.split()) > 1 else 0)
-            full_outline = "\n".join([f"- {k}: {' | '.join(pages_data[k])}" for k in sorted_keys])
-            
+
+            sorted_keys = _sorted_keys(pages_data)
+
             import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                future_to_page = {
-                    executor.submit(orchestrator._process_page, page_name, p_scenes, consistency_data, full_outline): page_name
-                    for page_name, p_scenes in pages_data.items()
-                }
-                for future in concurrent.futures.as_completed(future_to_page):
-                    res = future.result()
-                    if res and res[1] is not None:
-                        page_name, page_data = res
-                        
-                        from app.db.connection import SessionLocal
-                        session = SessionLocal()
-                        saved_output_id = None
-                        try:
-                            saved_output = crud.save_agent_output(
-                                session,
-                                project_id=request.project_id,
-                                page_name=page_name,
-                                agent_role="Story Page Agent",
-                                raw_output=page_data
-                            )
-                            session.commit()
-                            saved_output_id = saved_output.id
-                        except Exception as save_err:
-                            session.rollback()
-                            print(f"Error saving page {page_name}: {save_err}")
-                        finally:
-                            session.close()
-                            
-                        # Append the database output_id to the page data dict sent to frontend
-                        streamed_data = {**page_data}
-                        if saved_output_id is not None:
-                            streamed_data["output_id"] = saved_output_id
-                        yield json.dumps({"type": "page", "page": page_name, "data": streamed_data}) + "\n"
+
+            # ---- Route per-page processing ----
+            if product_type == "rhyme":
+                # Rebuild rhyme orchestrator (lightweight — no LLM re-calls)
+                rhyme_key = config_dict.get("rhyme_key")
+                custom_text = config_dict.get("custom_text")
+                if rhyme_key and rhyme_key in RHYMES_DB:
+                    rhyme_data = RHYMES_DB[rhyme_key]
+                else:
+                    rhyme_data = {
+                        "title": project.title,
+                        "text": custom_text or "",
+                        "stanzas": [],
+                        "char": character_sheet.get("char_sheet", {}).get("name", "the character"),
+                        "theme": "nursery rhyme adventure",
+                        "style_palette": "bright primary colours",
+                    }
+                orchestrator = RhymeOrchestrator(
+                    rhyme_data=rhyme_data,
+                    total_pages=len(pages_data),
+                    child_profile=config_dict,
+                    text_model=request.text_model,
+                )
+                char_sheet_data = character_sheet.get("char_sheet", {})
+                style_guide_data = character_sheet.get("style_guide", {})
+                full_plan_str = "\n".join(
+                    f"- {k}: {pages_data[k][0] if isinstance(pages_data[k], list) else pages_data[k]}"
+                    for k in sorted_keys
+                )
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    future_to_page = {
+                        executor.submit(
+                            orchestrator.process_page_from_db,
+                            page_name,
+                            (pages_data[page_name][0] if isinstance(pages_data[page_name], list) else pages_data[page_name]),
+                            (pages_data[page_name][1] if isinstance(pages_data[page_name], list) and len(pages_data[page_name]) > 1 else ""),
+                            char_sheet_data, style_guide_data, full_plan_str,
+                            sorted_keys.index(page_name) + 1,
+                        ): page_name
+                        for page_name in sorted_keys
+                    }
+                    for future in concurrent.futures.as_completed(future_to_page):
+                        res = future.result()
+                        if res and res[1] is not None:
+                            page_name, page_data = res
+                            _save_and_yield(request.project_id, page_name, page_data, "Rhyme Scene Agent")
+                            yield json.dumps({"type": "page", "page": page_name, "data": page_data}) + "\n"
+
+            elif product_type == "story":
+                story_prompt = config_dict.get("custom_text") or project.title
+                orchestrator = StoryOrchestrator(
+                    story_title=project.title,
+                    story_prompt=story_prompt,
+                    total_pages=len(pages_data),
+                    child_profile=config_dict,
+                    text_model=request.text_model,
+                )
+                char_sheet_data = character_sheet.get("char_sheet", {})
+                style_guide_data = character_sheet.get("style_guide", {})
+                full_outline = "\n".join(
+                    f"- {k}: {pages_data[k][0] if isinstance(pages_data[k], list) else pages_data[k]}"
+                    for k in sorted_keys
+                )
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                    future_to_page = {
+                        executor.submit(
+                            orchestrator.process_page_from_db,
+                            page_name,
+                            (pages_data[page_name][0] if isinstance(pages_data[page_name], list) else pages_data[page_name]),
+                            char_sheet_data, style_guide_data, full_outline,
+                            sorted_keys.index(page_name) + 1,
+                        ): page_name
+                        for page_name in sorted_keys
+                    }
+                    for future in concurrent.futures.as_completed(future_to_page):
+                        res = future.result()
+                        if res and res[1] is not None:
+                            page_name, page_data = res
+                            _save_and_yield(request.project_id, page_name, page_data, "Story Page Agent")
+                            yield json.dumps({"type": "page", "page": page_name, "data": page_data}) + "\n"
+
+            else:  # habit_book (default)
+                consistency_data = character_sheet
+                orchestrator = HabitChartOrchestrator(
+                    chart_title=project.title,
+                    total_scenes=len(pages_data),
+                    total_pages=len(pages_data),
+                    child_profile=config_dict,
+                    text_model=request.text_model,
+                )
+                full_outline = "\n".join(
+                    [f"- {k}: {' | '.join(pages_data[k]) if isinstance(pages_data[k], list) else pages_data[k]}"
+                     for k in sorted_keys]
+                )
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    future_to_page = {
+                        executor.submit(
+                            orchestrator._process_page, page_name,
+                            pages_data[page_name] if isinstance(pages_data[page_name], list) else [pages_data[page_name]],
+                            consistency_data, full_outline
+                        ): page_name
+                        for page_name in sorted_keys
+                    }
+                    for future in concurrent.futures.as_completed(future_to_page):
+                        res = future.result()
+                        if res and res[1] is not None:
+                            page_name, page_data = res
+                            _save_and_yield(request.project_id, page_name, page_data, "Story Page Agent")
+                            yield json.dumps({"type": "page", "page": page_name, "data": page_data}) + "\n"
+
         except Exception as e:
             print(f"STREAM ERROR: {e}")
             yield json.dumps({"type": "error", "detail": str(e)}) + "\n"
+
+    def _save_and_yield(project_id: int, page_name: str, page_data: dict, agent_role: str):
+        """Helper: save page output to DB (uses its own session to be thread-safe)."""
+        from app.db.connection import SessionLocal
+        session = SessionLocal()
+        try:
+            saved = crud.save_agent_output(
+                session, project_id=project_id,
+                page_name=page_name, agent_role=agent_role,
+                raw_output=page_data
+            )
+            session.commit()
+            page_data["output_id"] = saved.id
+        except Exception as save_err:
+            session.rollback()
+            print(f"Error saving page {page_name}: {save_err}")
+        finally:
+            session.close()
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
 
@@ -505,24 +697,70 @@ def list_projects_endpoint(db: Session = Depends(get_db)):
             "id": p.id,
             "title": p.title,
             "status": p.status,
+            "project_type": p.project_type,
             "created_at": p.created_at.isoformat() if p.created_at else None
         }
         for p in projects
     ]
 
+
+@app.delete("/delete-project/{project_id}")
+def delete_project_endpoint(
+    project_id: int,
+    delete_files: bool = False,
+    db: Session = Depends(get_db)
+):
+    """
+    Permanently deletes a project and all its related data from PostgreSQL
+    (ratings, videos, images, agent_outputs, stories, project row).
+
+    If delete_files=True, also removes the physical image/video files from disk.
+    Also cleans up the ChromaDB entry when chroma_doc_id is present.
+    """
+    # Fetch before delete so we can grab chroma_doc_id
+    project = crud.get_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    chroma_doc_id = project.chroma_doc_id
+
+    deleted = crud.delete_project(db, project_id, delete_files=delete_files)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    # Clean up ChromaDB entry if present
+    if chroma_doc_id:
+        try:
+            chroma_client.delete_document(chroma_doc_id)
+            logger.info(f"Deleted ChromaDB doc id={chroma_doc_id} for project {project_id}")
+        except Exception as e:
+            logger.warning(f"Could not delete ChromaDB entry for project {project_id}: {e}")
+
+    return {"status": "deleted", "project_id": project_id, "files_deleted": delete_files}
+
 @app.post("/save-project-assets")
 def save_project_assets_endpoint(request: SaveProjectAssetsRequest, db: Session = Depends(get_db)):
+    if request.project_id:
+        project_id = request.project_id
+    else:
+        project = crud.create_project(
+            db, 
+            title=request.project_title or "Untitled Book",
+            project_type=request.project_type or "habit_book"
+        )
+        project_id = project.id
+
     # 1. Save stories consolidated
     sorted_pages = sorted(request.stories.keys(), key=lambda k: int(k.split()[1]) if len(k.split()) > 1 else 0)
     story_text = "\n\n".join([f"{page}: {request.stories[page]}" for page in sorted_pages])
-    crud.save_story(db, project_id=request.project_id, story_text=story_text)
+    crud.save_story(db, project_id=project_id, story_text=story_text)
     
     # 2. Save individual images
     for page, img_path in request.images.items():
         prompt = request.prompts.get(page, "")
         crud.save_image_record(
             db,
-            project_id=request.project_id,
+            project_id=project_id,
             page_name=page,
             image_prompt=prompt,
             image_path=img_path
@@ -533,7 +771,7 @@ def save_project_assets_endpoint(request: SaveProjectAssetsRequest, db: Session 
         if vid_path:
             crud.save_video_record(
                 db,
-                project_id=request.project_id,
+                project_id=project_id,
                 page_name=page,
                 video_path=vid_path
             )
@@ -542,13 +780,13 @@ def save_project_assets_endpoint(request: SaveProjectAssetsRequest, db: Session 
     if request.full_video:
         crud.save_video_record(
             db,
-            project_id=request.project_id,
+            project_id=project_id,
             page_name="full_story",
             video_path=request.full_video
         )
         
     # 5. Add to ChromaDB Vector search database and update status
-    project = crud.get_project(db, request.project_id)
+    project = crud.get_project(db, project_id)
     if project:
         try:
             config_dict = json.loads(project.config_json) if project.config_json else {}

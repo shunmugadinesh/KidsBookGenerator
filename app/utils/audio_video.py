@@ -297,12 +297,13 @@ def compile_story_video(image_data_uri_or_path, text, voice, bgm_option, hf_toke
         
         if bgm_path and os.path.exists(bgm_path):
             # Mix TTS (volume 1.0) and BGM (volume 0.30)
+            # Add 1s silence before voice, and 1s silence after voice
             cmd = [
                 ffmpeg_bin, "-y",
                 "-loop", "1", "-i", image_path,
                 "-i", tts_temp_path,
                 "-stream_loop", "-1", "-i", bgm_path,
-                "-filter_complex", "[1:a]volume=1.0[speech];[2:a]volume=0.30[music];[speech][music]amix=inputs=2:duration=first:dropout_transition=2[mixed_audio]",
+                "-filter_complex", "[1:a]adelay=1s:all=1,apad=pad_dur=1,volume=1.0[speech];[2:a]volume=0.30[music];[speech][music]amix=inputs=2:duration=first:dropout_transition=2[mixed_audio]",
                 "-map", "0:v", "-map", "[mixed_audio]",
                 "-c:v", "libx264", "-tune", "stillimage",
                 "-c:a", "aac", "-b:a", "192k",
@@ -314,7 +315,8 @@ def compile_story_video(image_data_uri_or_path, text, voice, bgm_option, hf_toke
                 ffmpeg_bin, "-y",
                 "-loop", "1", "-i", image_path,
                 "-i", tts_temp_path,
-                "-map", "0:v", "-map", "1:a",
+                "-filter_complex", "[1:a]adelay=1s:all=1,apad=pad_dur=1[speech]",
+                "-map", "0:v", "-map", "[speech]",
                 "-c:v", "libx264", "-tune", "stillimage",
                 "-c:a", "aac", "-b:a", "192k",
                 "-pix_fmt", "yuv420p",

@@ -158,3 +158,66 @@ LETTERS_DATA = [
         "fact": "Zebras have beautiful black and white stripes and run fast across the wild grass!",
     },
 ]
+
+NUMBERS_DATA = [
+    {
+        "l": "1",
+        "word": "One Sun",
+        "scene": "pointing happily at a single bright glowing cartoon sun in a clear blue sky, warm sunlight illuminating their smiling face",
+        "fact": "There is only one sun in our sky, and it gives us light and warmth every day!",
+    },
+    {
+        "l": "2",
+        "word": "Two Shoes",
+        "scene": "sitting on the floor, holding up two brightly colored mismatched cartoon sneakers, looking very proud and ready to walk",
+        "fact": "We have two feet, so we need two shoes to run and jump outside!",
+    },
+    {
+        "l": "3",
+        "word": "Three Balloons",
+        "scene": "holding the strings of three large, round, colorful cartoon balloons (red, blue, and yellow) floating gently above them, joyful expression",
+        "fact": "Three colorful balloons can make any day feel like a magical party!",
+    },
+    {
+        "l": "4",
+        "word": "Four Wheels",
+        "scene": "kneeling beside a shiny red toy car, pointing excitedly at its four black wheels, looking like a little mechanic",
+        "fact": "Cars need four round wheels to roll smoothly down the bumpy road!",
+    },
+    {
+        "l": "5",
+        "word": "Five Fingers",
+        "scene": "holding one hand up high, fingers spread wide open, looking at their hand with a big cheerful smile",
+        "fact": "You have five fingers on each hand to help you wave hello to your friends!",
+    },
+    {
+        "l": "6",
+        "word": "Six Blocks",
+        "scene": "carefully placing the top block on a tall colorful tower made of exactly six building blocks, tongue sticking out slightly in concentration",
+        "fact": "Stacking six blocks into a tall tower takes focus, balance, and a steady hand!",
+    },
+    {
+        "l": "7",
+        "word": "Seven Colors",
+        "scene": "painting a beautiful arc on a large easel, showing all seven colors of a rainbow, holding a big magical paintbrush",
+        "fact": "A beautiful rainbow has seven bright colors stretching across the sky!",
+    },
+    {
+        "l": "8",
+        "word": "Eight Legs",
+        "scene": "looking curiously at a friendly, smiling, fuzzy purple cartoon spider with eight long legs dangling from a web string",
+        "fact": "Spiders are amazing little builders that have eight legs to help them spin webs!",
+    },
+    {
+        "l": "9",
+        "word": "Nine Stars",
+        "scene": "looking up at a magical night sky with exactly nine bright twinkling stars, pointing at them while holding a cozy blanket",
+        "fact": "Counting nine bright stars in the night sky is a peaceful way to get ready for bed!",
+    },
+    {
+        "l": "10",
+        "word": "Ten Toes",
+        "scene": "sitting down barefoot, wiggling their ten little toes playfully, giggling and looking down at their feet",
+        "fact": "Wiggling your ten little toes in the soft green grass feels ticklish and fun!",
+    },
+]

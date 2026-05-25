@@ -39,17 +39,68 @@ NEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly draw
 def text_to_image_prompt(consistency_data: dict, story_data: dict) -> str:
     """
     Constructs a structured text-to-image prompt from the consistency data and page specific story details.
+    Supports dynamic mapping and nesting resolution across all book types (Habit, Rhymes, Story).
     """
-    subject = consistency_data.get('subject') or ""
-    action = story_data.get('action') or ""
-    environment = consistency_data.get('environment') or ""
-    style = consistency_data.get('style') or ""
-    lighting = consistency_data.get('lighting') or ""
-    composition = story_data.get('composition') or ""
-    details = story_data.get('details') or ""
-    quality = consistency_data.get('quality') or ""
-    negative_prompt = consistency_data.get('negative_prompt') or ""
-    guidelines = consistency_data.get('guidelines') or ""
+    # 1. Unnest dictionaries in consistency_data if they are wrapped in sub-keys
+    flat_consistency = {}
+    if isinstance(consistency_data, dict):
+        for k, v in consistency_data.items():
+            if not isinstance(v, dict):
+                flat_consistency[k] = v
+        for wrapper in ["char_sheet", "character_sheet", "style_guide"]:
+            if wrapper in consistency_data and isinstance(consistency_data[wrapper], dict):
+                for k, v in consistency_data[wrapper].items():
+                    if k not in flat_consistency or not flat_consistency[k]:
+                        flat_consistency[k] = v
+
+    # 2. Unnest dictionaries in story_data if they are wrapped in sub-keys
+    flat_story = {}
+    if isinstance(story_data, dict):
+        for k, v in story_data.items():
+            if not isinstance(v, dict):
+                flat_story[k] = v
+        for wrapper in ["scene_data", "detail_data", "story_data"]:
+            if wrapper in story_data and isinstance(story_data[wrapper], dict):
+                for k, v in story_data[wrapper].items():
+                    if k not in flat_story or not flat_story[k]:
+                        flat_story[k] = v
+
+    # 3. Retrieve or construct subject (resolving double-comma formatting issues)
+    subject = flat_consistency.get('subject') or ""
+    if not subject or "character, ," in subject or subject.strip() == "character":
+        name = flat_consistency.get('name', 'character')
+        age = flat_consistency.get('age_desc') or flat_consistency.get('age', '')
+        gender = flat_consistency.get('gender', '')
+        skin = flat_consistency.get('skin_tone') or flat_consistency.get('skin', '')
+        hair = flat_consistency.get('hair') or f"{flat_consistency.get('hair_color', '')} {flat_consistency.get('hair_style', '')}".strip()
+        eyes = flat_consistency.get('eyes') or flat_consistency.get('eye_color', '')
+        
+        parts = [name, age, gender, skin, hair, eyes]
+        subj_str = ", ".join([str(p).strip() for p in parts if p and str(p).strip()])
+        outfit = flat_consistency.get('outfit') or flat_consistency.get('outfit_color', '')
+        if outfit:
+            subj_str += f", wearing {outfit}"
+        props = flat_consistency.get('props') or ""
+        if props:
+            subj_str += f", with {props}"
+        subject = subj_str
+
+    # 4. Map fields with robust fallbacks
+    action = flat_story.get('action') or ""
+    environment = flat_consistency.get('environment') or flat_consistency.get('environment_base') or flat_story.get('environment') or ""
+    style = flat_consistency.get('style') or flat_consistency.get('art_style') or ""
+    lighting = flat_consistency.get('lighting') or flat_story.get('mood_lighting') or ""
+    composition = flat_story.get('composition') or ""
+    
+    # Compose details list cleanly
+    details = flat_story.get('details') or ""
+    unique_el = flat_story.get('unique_element') or ""
+    if unique_el and unique_el not in details:
+        details = f"{details}; {unique_el}"
+
+    quality = flat_consistency.get('quality') or "HD printable, 4k, ultra detailed"
+    negative_prompt = flat_consistency.get('negative_prompt') or ""
+    guidelines = flat_consistency.get('guidelines') or ""
 
     prompt_lines = [
         f"SUBJECT: {subject}",
