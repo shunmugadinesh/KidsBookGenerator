@@ -244,6 +244,12 @@ def generate_story_pages_endpoint(request: StoryPagesRequest, db: Session = Depe
     config_dict = json.loads(project.config_json) if project.config_json else {}
     product_type = request.product_type or config_dict.get("product_type", "habit_book")
 
+    # Load parallelism config from environment (default: 3)
+    try:
+        max_workers = int(os.getenv("MAX_WORKERS", "3"))
+    except ValueError:
+        max_workers = 3
+
     def _sorted_keys(d: dict) -> list:
         return sorted(d.keys(), key=lambda k: int(k.split()[1]) if len(k.split()) > 1 else 0)
 
@@ -284,7 +290,7 @@ def generate_story_pages_endpoint(request: StoryPagesRequest, db: Session = Depe
                     for k in sorted_keys
                 )
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                     future_to_page = {
                         executor.submit(
                             orchestrator.process_page_from_db,
@@ -319,7 +325,7 @@ def generate_story_pages_endpoint(request: StoryPagesRequest, db: Session = Depe
                     for k in sorted_keys
                 )
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                     future_to_page = {
                         executor.submit(
                             orchestrator.process_page_from_db,
@@ -351,7 +357,7 @@ def generate_story_pages_endpoint(request: StoryPagesRequest, db: Session = Depe
                      for k in sorted_keys]
                 )
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                     future_to_page = {
                         executor.submit(
                             orchestrator._process_page, page_name,
@@ -476,14 +482,17 @@ async def generate_audio_video_endpoint(request: AudioVideoRequest, db: Session 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/preview-voice")
-def preview_voice_endpoint(voice: str):
+def preview_voice_endpoint(voice: str, text: str = None):
     try:
+        import hashlib
         os.makedirs("app/resources/generated", exist_ok=True)
-        preview_filename = f"preview_{voice}.mp3"
+        
+        sample_text = text if text and text.strip() else "Hi! I am your AI narrator. I am ready to bring your story to life!"
+        text_hash = hashlib.md5(sample_text.encode('utf-8')).hexdigest()
+        preview_filename = f"preview_{voice}_{text_hash}.mp3"
         preview_path = f"app/resources/generated/{preview_filename}"
         
         if not os.path.exists(preview_path):
-            sample_text = "Hi! I am your AI narrator. I am ready to bring your story to life!"
             eleven_key = os.getenv("ELEVENLABS_API_KEY")
             from app.utils.audio_video import generate_tts
             generate_tts(sample_text, voice, preview_path, eleven_key)

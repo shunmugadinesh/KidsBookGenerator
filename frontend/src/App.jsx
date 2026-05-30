@@ -160,6 +160,8 @@ export default function App() {
   const [storyPrompt, setStoryPrompt] = useState(''); // story concept / topic text
 
   // Audio & Video Studio States
+  const [activeVoiceTexts, setActiveVoiceTexts] = useState({});
+  const [tempVoiceText, setTempVoiceText] = useState('');
   const [selectedVoice, setSelectedVoice] = useState('en-US-AnaNeural');
   const [selectedBgm, setSelectedBgm] = useState('playful_toyland');
   const [customBgmPrompt, setCustomBgmPrompt] = useState('gentle bedtime piano loop, calming instrumental');
@@ -171,6 +173,9 @@ export default function App() {
   const [isCompilingFullVideo, setIsCompilingFullVideo] = useState(false);
   const [fullBookVideoUrl, setFullBookVideoUrl] = useState(null);
   const [centerViewMode, setCenterViewMode] = useState('page'); // 'page' or 'movie'
+  const [videoCacheBuster, setVideoCacheBuster] = useState({});
+  const [fullMovieCacheBuster, setFullMovieCacheBuster] = useState(0);
+  const compiledVideosMetaRef = useRef({}); // mapping: pageKey -> { voice, bgm }
 
   // Phase 3 — Agent Review Panel & Rating state
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
@@ -272,7 +277,8 @@ export default function App() {
   // Sync local editor buffers with active state
   useEffect(() => {
     setTempStoryText(activeStories[activePageKey] || '');
-  }, [activePageKey, activeStories]);
+    setTempVoiceText(activeVoiceTexts[activePageKey] ?? activeStories[activePageKey] ?? '');
+  }, [activePageKey, activeStories, activeVoiceTexts]);
 
   useEffect(() => {
     setTempPromptText(activePromptText || '');
@@ -280,6 +286,9 @@ export default function App() {
 
   const handleSaveStoryEdit = () => {
     handleStoryChange(activePageKey, tempStoryText);
+    if (!activeVoiceTexts[activePageKey]) {
+      setTempVoiceText(tempStoryText); // Keep voice text in sync if it wasn't custom modified
+    }
   };
   const handleCancelStoryEdit = () => {
     setTempStoryText(activeStories[activePageKey] || '');
@@ -289,6 +298,13 @@ export default function App() {
   };
   const handleCancelPromptEdit = () => {
     setTempPromptText(activePromptText || '');
+  };
+
+  const handleSaveVoiceTextEdit = () => {
+    setActiveVoiceTexts(prev => ({ ...prev, [activePageKey]: tempVoiceText }));
+  };
+  const handleCancelVoiceTextEdit = () => {
+    setTempVoiceText(activeVoiceTexts[activePageKey] ?? activeStories[activePageKey] ?? '');
   };
 
   // Fetch list of saved projects from DB
@@ -769,7 +785,7 @@ export default function App() {
 
   const compilePageVideoSegment = async (pageKey) => {
     const imgSrc = activeGeneratedImages[pageKey];
-    const storyText = activeStories[pageKey] || '';
+    const storyText = activeVoiceTexts[pageKey] ?? activeStories[pageKey] ?? '';
 
     if (!imgSrc) {
       throw new Error(`Please generate an image for page ${pageKey} first.`);
@@ -805,6 +821,8 @@ export default function App() {
     }
 
     setGeneratedVideos(prev => ({ ...prev, [pageKey]: data.video_url }));
+    setVideoCacheBuster(prev => ({ ...prev, [pageKey]: Date.now() }));
+    compiledVideosMetaRef.current[pageKey] = { voice: selectedVoice, bgm: bgmValue };
     return data.video_url;
   };
 
@@ -848,12 +866,19 @@ export default function App() {
         const pageKey = pagesList[i];
         setAllProgress(`Compiling segment ${pageKey} (${i + 1}/${pagesList.length})...`);
 
+        const bgmValue = pageBgmEnabled
+          ? (selectedBgm === 'ai_musicgen' ? customBgmPrompt : selectedBgm)
+          : 'none';
+
         let videoUrl = generatedVideos[pageKey];
-        if (!videoUrl) {
+        const meta = compiledVideosMetaRef.current[pageKey];
+
+        // Recompile if video doesn't exist, OR if voice/bgm has changed from what was compiled
+        if (!videoUrl || !meta || meta.voice !== selectedVoice || meta.bgm !== bgmValue) {
           videoUrl = await compilePageVideoSegment(pageKey);
         }
 
-        const fname = videoUrl.split('/').pop();
+        const fname = videoUrl.split('?')[0].split('/').pop();
         compiledFilenames.push(fname);
       }
 
@@ -873,6 +898,7 @@ export default function App() {
       if (!response.ok) throw new Error(data.detail || "Merge compilation failed");
 
       setFullBookVideoUrl(data.video_url);
+      setFullMovieCacheBuster(Date.now());
       setCenterViewMode('movie');
       setRightPanelTab('media'); // Automatically open the video player tab
       setAllProgress("");
@@ -897,6 +923,12 @@ export default function App() {
     setPlayingBgm(null);
     setPlayingVoice(false);
   };
+
+  // Stop all playing music/voice if the user navigates away from the audio studio or closes the modal
+  useEffect(() => {
+    stopAllPreviews();
+  }, [rightPanelTab, movieBgmModalOpen, appMode]);
+
 
   const handlePreviewBgm = (bgmKey) => {
     if (playingBgm === bgmKey) {
@@ -938,7 +970,8 @@ export default function App() {
     setPlayingVoice(true);
 
     try {
-      const response = await fetch(`/preview-voice?voice=${encodeURIComponent(voiceKey)}`);
+      const previewText = tempVoiceText || tempStoryText || "";
+      const response = await fetch(`/preview-voice?voice=${encodeURIComponent(voiceKey)}&text=${encodeURIComponent(previewText)}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Failed to fetch voice preview URL");
 
@@ -1882,8 +1915,8 @@ export default function App() {
                     /* Continuous Full-Length Storybook Movie Playout */
                     <div className="flex flex-col h-full w-full bg-black relative">
                       <video
-                        key={fullBookVideoUrl}
-                        src={fullBookVideoUrl}
+                        key={`${fullBookVideoUrl}?t=${fullMovieCacheBuster}`}
+                        src={`${fullBookVideoUrl}?t=${fullMovieCacheBuster}`}
                         controls
                         autoPlay
                         className="w-full h-full object-contain"
@@ -2165,6 +2198,39 @@ export default function App() {
                           {playingVoice ? 'Stop' : 'Listen'}
                         </button>
                       </div>
+
+                      {/* Voice-Over Script TextArea */}
+                      <div className="mt-3 pt-3 border-t border-slate-200">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[10px] uppercase font-bold text-slate-400">Voice-Over Script</label>
+                          {tempVoiceText !== (activeVoiceTexts[activePageKey] ?? activeStories[activePageKey] ?? '') && (
+                            <div className="flex items-center gap-1.5 animate-fadeIn">
+                              <button
+                                onClick={handleSaveVoiceTextEdit}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold transition-all border border-emerald-200"
+                                title="Save voice script"
+                              >
+                                ✓ Save
+                              </button>
+                              <button
+                                onClick={handleCancelVoiceTextEdit}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold transition-all border border-rose-200"
+                                title="Cancel edits"
+                              >
+                                ✕ Cancel
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <textarea
+                          value={tempVoiceText}
+                          onChange={(e) => setTempVoiceText(e.target.value)}
+                          rows={3}
+                          className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none font-medium text-slate-700"
+                          placeholder="Type specific voice-over script here. This won't affect the visual text on the page."
+                        />
+                        <p className="text-[9px] text-slate-400 mt-1 italic">Overrides the visual page story just for audio generation.</p>
+                      </div>
                     </div>
 
                     {/* BGM Selection */}
@@ -2254,8 +2320,8 @@ export default function App() {
                         <div className="space-y-2 flex-1 flex flex-col justify-end min-h-0 mt-2">
                           <div className="rounded-lg overflow-hidden border border-slate-200 bg-black flex-1 flex items-center justify-center relative min-h-[140px]">
                             <video
-                              key={generatedVideos[activePageKey]}
-                              src={generatedVideos[activePageKey]}
+                              key={`${activePageKey}-${videoCacheBuster[activePageKey] || 0}`}
+                              src={`${generatedVideos[activePageKey]}?t=${videoCacheBuster[activePageKey] || 0}`}
                               controls
                               className="w-full h-full object-contain"
                             />

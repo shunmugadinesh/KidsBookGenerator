@@ -92,7 +92,7 @@ class HabitTasks:
                 
                 Output ONLY a JSON object with exactly these 4 keys:
                 - "story": 1-2 short, cheerful sentences for this page.
-                - "action": write a highly descriptive, detailed visual prompt focusing purely on the physical action, body language, facial expression, and interaction with objects in the scene. Provide rich visual context so an image generator knows exactly what the character is doing. Keep it wholesome and celebration-based.
+                - "action": write a highly descriptive, detailed visual prompt focusing purely on the physical action, body language, facial expression, and interaction with objects in the scene. Provide rich visual context so an image generator knows exactly what the character is doing. Always refer to the characters by their specific names (e.g. "{child_name}", and other characters present by name) instead of using pronouns like "they", "both", "them", or "it". Keep it wholesome and celebration-based.
                 - "composition": describe the best camera angle, shot type, and composition based on the scene action (e.g., eye-level, slightly above, full body, close-up, dynamic angle)..
                 - "details": 2-3 visual detail words for this scene plus exactly "stars, sparkles, cheerful celebration elements".
                 """,
@@ -300,7 +300,7 @@ class RhymeTasks:
             5. Suggest the best camera composition for this scene.
 
             Output ONLY a JSON object with exactly these 5 keys:
-            - "action": rich visual description of what the character is physically doing in this exact moment (2-3 sentences, very specific)
+            - "action": rich visual description of what the character is physically doing in this exact moment (2-3 sentences, very specific). Always refer to the characters by their specific names (from the character sheet, e.g. "Humpty Dumpty", and other characters by name) instead of using pronouns like "they", "both", "them", or "it".
             - "environment": specific environment for THIS page (must differ from adjacent pages in at least one detail — different time of day, prop placement, distance, or location sub-area)
             - "unique_element": 1 unique prop, lighting effect, or environment detail introduced ONLY on this page to create visual variety
             - "composition": best camera angle and shot type for this scene (e.g. "low angle wide shot looking up at the spider climbing")
@@ -435,7 +435,7 @@ class StoryTasks:
 
             Output ONLY a JSON object with exactly these 4 keys:
             - "story": 1-2 short, cheerful narrative sentences for this page.
-            - "action": rich visual description of the physical action happening (body language, props, expression) — 2 sentences specific to this scene.
+            - "action": rich visual description of the physical action happening (body language, props, expression) — 2 sentences specific to this scene. Always refer to the characters by their specific names (from the character sheet, e.g. "{child_name}", and other characters present by name) instead of using pronouns like "they", "both", "them", or "it".
             - "composition": best camera angle and shot type for this scene.
             - "details": 3-4 visual detail words tied specifically to this scene.
             """,
