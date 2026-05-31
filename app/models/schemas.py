@@ -39,11 +39,20 @@ class AudioVideoRequest(BaseModel):
     project_id: Optional[int] = None
     project_title: Optional[str] = "Untitled Book"
     project_type: Optional[str] = "habit_book"
+    voice_speed: str = "normal"
+    dramatic_pacing: bool = False
 
 class FullMovieRequest(BaseModel):
     video_filenames: list[str]
     bgm: Optional[str] = "none"
     project_id: Optional[int] = None
+
+class TuneScriptRequest(BaseModel):
+    text: str
+    book_title: str
+    book_type: str
+    overall_context: str
+    text_model: str = 'ollama'
 
 # ---------------------------------------------------------------------------
 # Phase 3 — DB / Review / Rating schemas

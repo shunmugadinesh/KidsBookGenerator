@@ -39,6 +39,7 @@ export default function App() {
   const [referenceImage, setReferenceImage] = useState(null);
   const [appMode, setAppMode] = useState('book'); // 'book' or 'habit'
   const [photoSectionOpen, setPhotoSectionOpen] = useState(false); // collapsible child photo
+  const [storyConceptOpen, setStoryConceptOpen] = useState(true); // collapsible story concept
 
   // Model Selectors (Common)
   const [selectedModel, setSelectedModel] = useState('pollinations');
@@ -69,7 +70,7 @@ export default function App() {
   const [selectedNumber, setSelectedNumber] = useState('1');
   const [numberStories, setNumberStories] = useState({});
   const [customNumbersPrompts, setCustomNumbersPrompts] = useState({});
-  
+
   // Customization States
   const [customWord, setCustomWord] = useState('');
   const [isCustomizing, setIsCustomizing] = useState(false);
@@ -162,12 +163,16 @@ export default function App() {
   // Audio & Video Studio States
   const [activeVoiceTexts, setActiveVoiceTexts] = useState({});
   const [tempVoiceText, setTempVoiceText] = useState('');
+  const [isTuningScript, setIsTuningScript] = useState(false);
+  const [isTuningScriptAll, setIsTuningScriptAll] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('en-US-AnaNeural');
-  const [selectedBgm, setSelectedBgm] = useState('playful_toyland');
+  const [voiceSpeed, setVoiceSpeed] = useState('slow');
+  const [dramaticPacing, setDramaticPacing] = useState(false);
+  const [selectedBgm, setSelectedBgm] = useState('electronic_melody');
   const [customBgmPrompt, setCustomBgmPrompt] = useState('gentle bedtime piano loop, calming instrumental');
   const [pageBgmEnabled, setPageBgmEnabled] = useState(false);
   const [movieBgmModalOpen, setMovieBgmModalOpen] = useState(false);
-  const [movieBgm, setMovieBgm] = useState('calm_piano');
+  const [movieBgm, setMovieBgm] = useState('electronic_melody');
   const [isCompilingVideo, setIsCompilingVideo] = useState(false);
   const [generatedVideos, setGeneratedVideos] = useState({}); // mapping: pageKey -> videoUrl
   const [isCompilingFullVideo, setIsCompilingFullVideo] = useState(false);
@@ -205,6 +210,7 @@ export default function App() {
   const [playingBgm, setPlayingBgm] = useState(null); // 'calm_piano', etc., or null
   const [playingVoice, setPlayingVoice] = useState(false);
   const previewAudioRef = useRef(null);
+  const abortTuneRef = useRef(null);
 
   const MODEL_LABELS = {
     pollinations: 'Pollinations AI',
@@ -238,6 +244,11 @@ export default function App() {
   // Active Key (e.g. "A" or "Page 1")
   const activePageKey = isBook ? selectedLetter : isNumbers ? selectedNumber : selectedHabitPage;
 
+  const contextRef = useRef({ appMode, activePageKey, currentProjectId });
+  useEffect(() => {
+    contextRef.current = { appMode, activePageKey, currentProjectId };
+  }, [appMode, activePageKey, currentProjectId]);
+
   // Active Maps
   const activeGeneratedImages = (isBook || isNumbers) ? generatedImages : habitGeneratedImages;
   const activeModelUsed = (isBook || isNumbers) ? modelUsed : habitModelUsed;
@@ -247,7 +258,7 @@ export default function App() {
   const activePromptText = isBook ? editablePrompt : isNumbers ? editablePrompt : habitEditablePrompt;
 
   // Unified page list
-  const pagesList = isBook ? Object.keys(customBookPrompts).sort() : isNumbers ? Object.keys(customNumbersPrompts).sort((a,b)=>parseInt(a)-parseInt(b)) : Object.keys(habitPrompts).sort((a, b) => {
+  const pagesList = isBook ? Object.keys(customBookPrompts).sort() : isNumbers ? Object.keys(customNumbersPrompts).sort((a, b) => parseInt(a) - parseInt(b)) : Object.keys(habitPrompts).sort((a, b) => {
     const numA = parseInt(a.split(' ')[1]) || 0;
     const numB = parseInt(b.split(' ')[1]) || 0;
     return numA - numB;
@@ -256,7 +267,7 @@ export default function App() {
   // Active generating indicators
   const isGeneratingActiveImage = isBook ? isGenerating : isGeneratingHabitImage;
   const isGeneratingAllActive = (isBook || isNumbers) ? generatingAll : generatingAllHabits;
-  
+
   // Calculate how many active pages have been generated
   const completedPagesCount = pagesList.filter(key => activeGeneratedImages[key]).length;
 
@@ -372,7 +383,7 @@ export default function App() {
       fetch('/rhyme-presets')
         .then(r => r.json())
         .then(d => setRhymePresets(d.rhymes || []))
-        .catch(() => {});
+        .catch(() => { });
     }
     // For story mode, keep min 6 pages
     if (appMode === 'story' && habitTotalPages < 6) {
@@ -406,16 +417,16 @@ export default function App() {
       const response = await fetch(`/get-project/${projectId}`);
       if (!response.ok) throw new Error("Project not found");
       const data = await response.json();
-      
+
       setCurrentProjectId(data.project_id);
       setHabitTitle(data.title);
       localStorage.setItem('current_project_id', data.project_id.toString());
-      
+
       const outputs = data.agent_outputs || [];
       const coreOutputs = {};
       const prompts = {};
       const stories = {};
-      
+
       outputs.forEach(o => {
         if (o.page_name === 'scene_plan') {
           coreOutputs.scene_plan = { id: o.id, data: o.raw_output };
@@ -430,12 +441,12 @@ export default function App() {
           stories[o.page_name] = o.raw_output?.story || '';
         }
       });
-      
+
       setAgentOutputs(coreOutputs);
 
       const isAlphabet = data.project_type === 'alphabet' || data.project_type === 'alphabet_book' || data.project_type === 'book';
       const isNumBook = data.project_type === 'numbers' || data.project_type === 'numbers_book';
-      
+
       if (isAlphabet) {
         setAppMode('book');
         const parsedPrompts = {};
@@ -469,7 +480,7 @@ export default function App() {
 
       setGeneratedVideos(data.videos || {});
       setFullBookVideoUrl(data.full_video || null);
-      
+
       const sortedPages = Object.keys(prompts).sort((a, b) => {
         const numA = parseInt(a.split(' ')[1]) || parseInt(a) || 0;
         const numB = parseInt(b.split(' ')[1]) || parseInt(b) || 0;
@@ -577,7 +588,7 @@ export default function App() {
     const allRatings = {};
     pagesList.forEach(p => { allRatings[p] = score; });
     setPageRatings(allRatings);
-    
+
     if (!currentProjectId) return;
     try {
       await fetch('/save-feedback', {
@@ -601,19 +612,19 @@ export default function App() {
     setIsSavingProject(true);
     setError(null);
     setSaveSuccess(false);
-    
+
     const storiesData = {};
     const promptsData = {};
     const imagesData = {};
     const videosData = {};
-    
+
     pagesList.forEach(page => {
       storiesData[page] = habitStoryTexts[page] || '';
       promptsData[page] = typeof habitPrompts[page] === 'object' ? habitPrompts[page].prompt : (habitPrompts[page] || '');
       imagesData[page] = habitGeneratedImages[page] || '';
       videosData[page] = generatedVideos[page] || '';
     });
-    
+
     try {
       const response = await fetch('/save-project-assets', {
         method: 'POST',
@@ -632,7 +643,7 @@ export default function App() {
       if (!response.ok) throw new Error("Failed to save project assets");
       const result = await response.json();
       if (result.project_id && !currentProjectId) {
-         setCurrentProjectId(result.project_id);
+        setCurrentProjectId(result.project_id);
       }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -659,22 +670,22 @@ export default function App() {
       });
       if (!response.ok) throw new Error("Customization failed");
       const data = await response.json();
-      
+
       const newFact = data.fact;
       const newScene = data.scene;
-      
+
       const isNum = isNumbers;
       const itemTypeLabel = isNum ? 'Number' : 'Letter';
       const newPrompt = `Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\n${newScene}.\n\n${itemTypeLabel} "${activePageKey}" for ${data.word || customWord}. Centered full-body or 3/4 body composition, clean soft pastel background with subtle ${(data.word || customWord).toLowerCase()}-themed color wash, single large glowing ${itemTypeLabel.toLowerCase()} "${activePageKey}" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word "${data.word || customWord}" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted`;
-      
+
       const newStoryText = `${itemTypeLabel} ${activePageKey} is for ${data.word || customWord}. ${newFact}`;
 
       if (isNum) {
-        setCustomNumbersPrompts(prev => ({...prev, [activePageKey]: newPrompt}));
-        setNumberStories(prev => ({...prev, [activePageKey]: newStoryText}));
+        setCustomNumbersPrompts(prev => ({ ...prev, [activePageKey]: newPrompt }));
+        setNumberStories(prev => ({ ...prev, [activePageKey]: newStoryText }));
       } else {
-        setCustomBookPrompts(prev => ({...prev, [activePageKey]: newPrompt}));
-        setBookStories(prev => ({...prev, [activePageKey]: newStoryText}));
+        setCustomBookPrompts(prev => ({ ...prev, [activePageKey]: newPrompt }));
+        setBookStories(prev => ({ ...prev, [activePageKey]: newStoryText }));
       }
       setEditablePrompt(newPrompt);
       setCustomWord('');
@@ -808,7 +819,9 @@ export default function App() {
         page_key: pageKey,
         project_id: currentProjectId || null,
         project_title: isBook ? "Alphabet Book" : isNumbers ? "Numbers Book" : habitTitle,
-        project_type: isBook ? "alphabet" : isNumbers ? "numbers" : appMode
+        project_type: isBook ? "alphabet" : isNumbers ? "numbers" : appMode,
+        voice_speed: voiceSpeed,
+        dramatic_pacing: dramaticPacing
       })
     });
 
@@ -822,7 +835,7 @@ export default function App() {
 
     setGeneratedVideos(prev => ({ ...prev, [pageKey]: data.video_url }));
     setVideoCacheBuster(prev => ({ ...prev, [pageKey]: Date.now() }));
-    compiledVideosMetaRef.current[pageKey] = { voice: selectedVoice, bgm: bgmValue };
+    compiledVideosMetaRef.current[pageKey] = { voice: selectedVoice, speed: voiceSpeed, pacing: dramaticPacing, bgm: bgmValue };
     return data.video_url;
   };
 
@@ -840,7 +853,7 @@ export default function App() {
     }
   };
 
-  const handleCompileFullMovie = async (chosenBgm = 'none') => {
+  const handleCompileFullMovie = async (chosenBgm = 'none', forceRecreate = false) => {
     setMovieBgmModalOpen(false);
     setIsCompilingFullVideo(true);
     setError(null);
@@ -873,8 +886,8 @@ export default function App() {
         let videoUrl = generatedVideos[pageKey];
         const meta = compiledVideosMetaRef.current[pageKey];
 
-        // Recompile if video doesn't exist, OR if voice/bgm has changed from what was compiled
-        if (!videoUrl || !meta || meta.voice !== selectedVoice || meta.bgm !== bgmValue) {
+        // Recompile if video doesn't exist, OR if forceRecreate is true, OR if voice/speed/pacing/bgm has changed
+        if (forceRecreate || !videoUrl || !meta || meta.voice !== selectedVoice || meta.speed !== voiceSpeed || meta.pacing !== dramaticPacing || meta.bgm !== bgmValue) {
           videoUrl = await compilePageVideoSegment(pageKey);
         }
 
@@ -938,17 +951,10 @@ export default function App() {
 
     stopAllPreviews();
 
-    const BGM_URLS = {
-      calm_piano: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-      happy_ukulele: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-      magical_fairytale: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-      playful_toyland: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
-    };
-
-    const url = BGM_URLS[bgmKey];
-    if (!url) return;
+    if (bgmKey === 'ai_musicgen') return; // Not handled locally
 
     setPlayingBgm(bgmKey);
+    const url = `/preview-bgm?bgm=${encodeURIComponent(bgmKey)}`;
     const audio = new Audio(url);
     previewAudioRef.current = audio;
     audio.play().catch(err => {
@@ -971,7 +977,7 @@ export default function App() {
 
     try {
       const previewText = tempVoiceText || tempStoryText || "";
-      const response = await fetch(`/preview-voice?voice=${encodeURIComponent(voiceKey)}&text=${encodeURIComponent(previewText)}`);
+      const response = await fetch(`/preview-voice?voice=${encodeURIComponent(voiceKey)}&text=${encodeURIComponent(previewText)}&speed=${encodeURIComponent(voiceSpeed)}&dramatic_pacing=${dramaticPacing}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Failed to fetch voice preview URL");
 
@@ -988,6 +994,114 @@ export default function App() {
       console.error(err);
       setError(`Voice preview failed: ${err.message}`);
       stopAllPreviews();
+    }
+  };
+
+  const handleAbortTuning = () => {
+    if (abortTuneRef.current) {
+      abortTuneRef.current.abort();
+      abortTuneRef.current = null;
+    }
+  };
+
+  const handleTuneScript = async () => {
+    if (abortTuneRef.current) abortTuneRef.current.abort();
+    abortTuneRef.current = new AbortController();
+
+    setIsTuningScript(true);
+    setError('');
+
+    const textToTune = tempVoiceText || tempStoryText || '';
+    const startingContext = { appMode, activePageKey, currentProjectId };
+
+    try {
+      const response = await fetch('/tune-script', {
+        method: 'POST',
+        signal: abortTuneRef.current.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: textToTune,
+          book_title: isBook ? "Alphabet Book" : isNumbers ? "Numbers Book" : habitTitle,
+          book_type: appMode,
+          overall_context: storyPrompt || "A fun children's story",
+          text_model: habitTextModel || 'ollama'
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Failed to tune script");
+
+      if (contextRef.current.appMode === startingContext.appMode &&
+        contextRef.current.activePageKey === startingContext.activePageKey &&
+        contextRef.current.currentProjectId === startingContext.currentProjectId) {
+        setTempVoiceText(data.tuned_text);
+      } else {
+        console.warn("Context changed during tuning. Result discarded to prevent overwriting.");
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('Tuning aborted by user.');
+      } else {
+        console.error(err);
+        setError(`Script tuning failed: ${err.message}`);
+      }
+    } finally {
+      setIsTuningScript(false);
+      abortTuneRef.current = null;
+    }
+  };
+
+  const handleTuneScriptAll = async () => {
+    if (abortTuneRef.current) abortTuneRef.current.abort();
+    abortTuneRef.current = new AbortController();
+
+    setIsTuningScriptAll(true);
+    setError('');
+    setAllProgress('Starting script auto-tune for all pages...');
+
+    try {
+      const newVoiceTexts = { ...activeVoiceTexts };
+      for (let i = 0; i < pagesList.length; i++) {
+        const pageKey = pagesList[i];
+        setAllProgress(`Auto-tuning script for ${pageKey} (${i + 1}/${pagesList.length})...`);
+
+        const textToTune = activeStories[pageKey] || '';
+        if (!textToTune.trim()) continue;
+
+        const response = await fetch('/tune-script', {
+          method: 'POST',
+          signal: abortTuneRef.current.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: textToTune,
+            book_title: isBook ? "Alphabet Book" : isNumbers ? "Numbers Book" : habitTitle,
+            book_type: appMode,
+            overall_context: storyPrompt || "A fun children's story",
+            text_model: habitTextModel || 'ollama'
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || `Failed to tune script for ${pageKey}`);
+
+        newVoiceTexts[pageKey] = data.tuned_text;
+      }
+
+      setActiveVoiceTexts(newVoiceTexts);
+      if (pagesList.includes(activePageKey)) {
+        setTempVoiceText(newVoiceTexts[activePageKey]);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('Bulk tuning aborted by user.');
+      } else {
+        console.error(err);
+        setError(`Bulk script tuning failed: ${err.message}`);
+      }
+    } finally {
+      setIsTuningScriptAll(false);
+      setAllProgress('');
+      abortTuneRef.current = null;
     }
   };
 
@@ -1301,910 +1415,1041 @@ export default function App() {
     <>
       <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
         {/* Header */}
-      <header className="bg-white shadow-sm border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10 sticky top-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2 rounded-xl">
-            <BookOpen className="text-white w-6 h-6" />
+        <header className="bg-white shadow-sm border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10 sticky top-0">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600 p-2 rounded-xl">
+              <BookOpen className="text-white w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800 tracking-tight">Kids Book Generator</h1>
+              <p className="text-xs text-slate-500 font-medium tracking-wider">AI Automation Studio</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Kids Book Generator</h1>
-            <p className="text-xs text-slate-500 font-medium tracking-wider">AI Automation Studio</p>
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            Powered by {MODEL_LABELS[selectedModel] || selectedModel}
           </div>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Sparkles className="w-4 h-4 text-amber-500" />
-          Powered by {MODEL_LABELS[selectedModel] || selectedModel}
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+        {/* Main Content */}
+        <div className="flex-1 flex overflow-hidden">
 
-        {/* Left Sidebar - Controls */}
-        <div className="bg-white border-r border-slate-200 flex flex-col shrink-0" style={{ width: '40%', minWidth: '250px', maxWidth: '380px', height: 'calc(100vh - 57px)' }}>
+          {/* Left Sidebar - Controls */}
+          <div className="bg-white border-r border-slate-200 flex flex-col shrink-0" style={{ width: '40%', minWidth: '250px', maxWidth: '380px', height: 'calc(100vh - 57px)' }}>
 
-          {/* Generator Mode Selection */}
-          <div className="px-3 pt-3 pb-2 border-b border-slate-100">
-            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3" /> Book Type
-            </label>
-            <select
-              value={appMode}
-              onChange={(e) => setAppMode(e.target.value)}
-              className="w-full py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-            >
-              <option value="book">📚 Alphabet Book</option>
-              <option value="numbers">🔢 Numbers Book</option>
-              <option value="habit">✅ Habit Training</option>
-              <option value="rhymes">🎵 Rhymes</option>
-              <option value="story">📖 Story</option>
-            </select>
-          </div>
+            {/* Generator Mode Selection */}
+            <div className="px-3 pt-3 pb-2 border-b border-slate-100">
+              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3" /> Book Type
+              </label>
+              <select
+                value={appMode}
+                onChange={(e) => {
+                  setAppMode(e.target.value);
+                  handleCloseProject();
+                }}
+                className="w-full py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              >
+                <option value="book">📚 Alphabet Book</option>
+                <option value="numbers">🔢 Numbers Book</option>
+                <option value="habit">✅ Habit Training</option>
+                <option value="rhymes">🎵 Rhymes</option>
+                <option value="story">📖 Story</option>
+              </select>
+            </div>
 
-          {/* Project Session Management */}
-          <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/30">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
-                <FolderOpen className="w-3 h-3" />
-                Project Session
-              </span>
-              {currentProjectId && (
-                <button
-                  onClick={handleCloseProject}
-                  className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline"
-                  title="Close current project session"
+            {/* Project Session Management */}
+            <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/30">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                  <FolderOpen className="w-3 h-3" />
+                  Project Session
+                </span>
+                {currentProjectId && (
+                  <button
+                    onClick={handleCloseProject}
+                    className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline"
+                    title="Close current project session"
+                  >
+                    ✕ Close
+                  </button>
+                )}
+              </div>
+              {currentProjectId ? (
+                <div className="px-2 py-1.5 bg-indigo-50/60 border border-indigo-100 rounded-lg flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-medium">ID:</span>
+                  <span className="font-mono font-bold text-indigo-700">#{currentProjectId}</span>
+                  <span className="text-slate-400 mx-1">·</span>
+                  <span className="text-slate-600 font-semibold truncate max-w-[80px]">{habitTitle}</span>
+                  <button
+                    onClick={() => setDeleteConfirmProjectId(currentProjectId)}
+                    className="ml-auto text-[10px] text-rose-400 hover:text-rose-600 font-bold hover:underline flex items-center gap-0.5"
+                    title="Delete this project permanently"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-1">
+                  <select
+                    value={selectedLoadProjectId || ''}
+                    onChange={(e) => {
+                      setSelectedLoadProjectId(e.target.value);
+                      if (e.target.value) loadProjectFromDb(parseInt(e.target.value));
+                    }}
+                    className="flex-1 py-1.5 px-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none"
+                  >
+                    <option value="">-- Open Existing --</option>
+                    {projectsList
+                      .filter((p) => {
+                        const type = p.project_type || 'habit_book';
+                        if (appMode === 'book') {
+                          return type === 'alphabet' || type === 'alphabet_book' || type === 'book';
+                        }
+                        if (appMode === 'numbers') {
+                          return type === 'numbers' || type === 'numbers_book';
+                        }
+                        if (appMode === 'habit') {
+                          return type === 'habit' || type === 'habit_book';
+                        }
+                        if (appMode === 'rhymes') {
+                          return type === 'rhyme' || type === 'rhymes';
+                        }
+                        if (appMode === 'story') {
+                          return type === 'story' || type === 'stories';
+                        }
+                        return false;
+                      })
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>#{p.id} - {p.title}</option>
+                      ))
+                    }
+                  </select>
+                  {selectedLoadProjectId && (
+                    <button
+                      onClick={() => setDeleteConfirmProjectId(parseInt(selectedLoadProjectId))}
+                      className="p-1.5 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 text-xs text-rose-500"
+                      title="Delete selected project"
+                    >🗑️</button>
+                  )}
+                  <button
+                    onClick={fetchProjectsList}
+                    className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-xs"
+                    title="Refresh"
+                  >🔄</button>
+                </div>
+              )}
+
+              {/* Delete Confirmation Modal */}
+              {deleteConfirmProjectId && (
+                <div
+                  style={{
+                    position: 'fixed', inset: 0, zIndex: 9999,
+                    background: 'rgba(15,23,42,0.65)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
                 >
-                  ✕ Close
-                </button>
+                  <div style={{
+                    background: '#fff', borderRadius: 16, padding: '28px 32px',
+                    maxWidth: 380, width: '90%', boxShadow: '0 25px 60px rgba(0,0,0,0.25)',
+                    border: '1.5px solid #fecaca'
+                  }}>
+                    <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 8 }}>🗑️</div>
+                    <h3 style={{
+                      fontWeight: 700, fontSize: 16, color: '#1e293b',
+                      textAlign: 'center', marginBottom: 6
+                    }}>Delete Project #{deleteConfirmProjectId}?</h3>
+                    <p style={{
+                      fontSize: 12, color: '#64748b', textAlign: 'center', marginBottom: 20, lineHeight: 1.6
+                    }}>
+                      This will permanently remove all pages, images, videos, and ratings from the database.
+                      <br />
+                      <strong>Do you also want to delete the image &amp; video files from disk?</strong>
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <button
+                        id="delete-project-yes-files"
+                        disabled={isDeletingProject}
+                        onClick={() => handleDeleteProject(deleteConfirmProjectId, true)}
+                        style={{
+                          padding: '9px 16px', borderRadius: 8, border: 'none',
+                          background: isDeletingProject ? '#fca5a5' : '#ef4444',
+                          color: '#fff', fontWeight: 700, fontSize: 13, cursor: isDeletingProject ? 'not-allowed' : 'pointer',
+                          transition: 'background 0.15s'
+                        }}
+                      >
+                        {isDeletingProject ? 'Deleting…' : '✓ Yes — delete DB records & files'}
+                      </button>
+                      <button
+                        id="delete-project-no-files"
+                        disabled={isDeletingProject}
+                        onClick={() => handleDeleteProject(deleteConfirmProjectId, false)}
+                        style={{
+                          padding: '9px 16px', borderRadius: 8, border: '1.5px solid #fca5a5',
+                          background: '#fff5f5', color: '#dc2626', fontWeight: 600, fontSize: 13,
+                          cursor: isDeletingProject ? 'not-allowed' : 'pointer', transition: 'background 0.15s'
+                        }}
+                      >
+                        Delete DB records only (keep files)
+                      </button>
+                      <button
+                        id="delete-project-cancel"
+                        disabled={isDeletingProject}
+                        onClick={() => setDeleteConfirmProjectId(null)}
+                        style={{
+                          padding: '8px 16px', borderRadius: 8, border: '1.5px solid #e2e8f0',
+                          background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 13,
+                          cursor: 'pointer', transition: 'background 0.15s'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-            {currentProjectId ? (
-              <div className="px-2 py-1.5 bg-indigo-50/60 border border-indigo-100 rounded-lg flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-medium">ID:</span>
-                <span className="font-mono font-bold text-indigo-700">#{currentProjectId}</span>
-                <span className="text-slate-400 mx-1">·</span>
-                <span className="text-slate-600 font-semibold truncate max-w-[80px]">{habitTitle}</span>
-                <button
-                  onClick={() => setDeleteConfirmProjectId(currentProjectId)}
-                  className="ml-auto text-[10px] text-rose-400 hover:text-rose-600 font-bold hover:underline flex items-center gap-0.5"
-                  title="Delete this project permanently"
-                >
-                  🗑️
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-1">
-                <select
-                  value={selectedLoadProjectId || ''}
-                  onChange={(e) => {
-                    setSelectedLoadProjectId(e.target.value);
-                    if (e.target.value) loadProjectFromDb(parseInt(e.target.value));
-                  }}
-                  className="flex-1 py-1.5 px-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none"
-                >
-                  <option value="">-- Open Existing --</option>
-                  {projectsList
-                    .filter((p) => {
-                      const type = p.project_type || 'habit_book';
-                      if (appMode === 'book') {
-                        return type === 'alphabet' || type === 'alphabet_book' || type === 'book';
-                      }
-                      if (appMode === 'numbers') {
-                        return type === 'numbers' || type === 'numbers_book';
-                      }
-                      if (appMode === 'habit') {
-                        return type === 'habit' || type === 'habit_book';
-                      }
-                      if (appMode === 'rhymes') {
-                        return type === 'rhyme' || type === 'rhymes';
-                      }
-                      if (appMode === 'story') {
-                        return type === 'story' || type === 'stories';
-                      }
-                      return false;
-                    })
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>#{p.id} - {p.title}</option>
-                    ))
-                  }
-                </select>
-                {selectedLoadProjectId && (
-                  <button
-                    onClick={() => setDeleteConfirmProjectId(parseInt(selectedLoadProjectId))}
-                    className="p-1.5 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 text-xs text-rose-500"
-                    title="Delete selected project"
-                  >🗑️</button>
-                )}
-                <button
-                  onClick={fetchProjectsList}
-                  className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-xs"
-                  title="Refresh"
-                >🔄</button>
-              </div>
-            )}
 
-            {/* Delete Confirmation Modal */}
-            {deleteConfirmProjectId && (
-              <div
-                style={{
-                  position: 'fixed', inset: 0, zIndex: 9999,
-                  background: 'rgba(15,23,42,0.65)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
+            {/* Image Upload Section — Collapsible Mini */}
+            <div className="border-b border-slate-100">
+              <button
+                onClick={() => setPhotoSectionOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 transition-colors"
               >
-                <div style={{
-                  background: '#fff', borderRadius: 16, padding: '28px 32px',
-                  maxWidth: 380, width: '90%', boxShadow: '0 25px 60px rgba(0,0,0,0.25)',
-                  border: '1.5px solid #fecaca'
-                }}>
-                  <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 8 }}>🗑️</div>
-                  <h3 style={{
-                    fontWeight: 700, fontSize: 16, color: '#1e293b',
-                    textAlign: 'center', marginBottom: 6
-                  }}>Delete Project #{deleteConfirmProjectId}?</h3>
-                  <p style={{
-                    fontSize: 12, color: '#64748b', textAlign: 'center', marginBottom: 20, lineHeight: 1.6
-                  }}>
-                    This will permanently remove all pages, images, videos, and ratings from the database.
-                    <br />
-                    <strong>Do you also want to delete the image &amp; video files from disk?</strong>
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button
-                      id="delete-project-yes-files"
-                      disabled={isDeletingProject}
-                      onClick={() => handleDeleteProject(deleteConfirmProjectId, true)}
-                      style={{
-                        padding: '9px 16px', borderRadius: 8, border: 'none',
-                        background: isDeletingProject ? '#fca5a5' : '#ef4444',
-                        color: '#fff', fontWeight: 700, fontSize: 13, cursor: isDeletingProject ? 'not-allowed' : 'pointer',
-                        transition: 'background 0.15s'
-                      }}
-                    >
-                      {isDeletingProject ? 'Deleting…' : '✓ Yes — delete DB records & files'}
-                    </button>
-                    <button
-                      id="delete-project-no-files"
-                      disabled={isDeletingProject}
-                      onClick={() => handleDeleteProject(deleteConfirmProjectId, false)}
-                      style={{
-                        padding: '9px 16px', borderRadius: 8, border: '1.5px solid #fca5a5',
-                        background: '#fff5f5', color: '#dc2626', fontWeight: 600, fontSize: 13,
-                        cursor: isDeletingProject ? 'not-allowed' : 'pointer', transition: 'background 0.15s'
-                      }}
-                    >
-                      Delete DB records only (keep files)
-                    </button>
-                    <button
-                      id="delete-project-cancel"
-                      disabled={isDeletingProject}
-                      onClick={() => setDeleteConfirmProjectId(null)}
-                      style={{
-                        padding: '8px 16px', borderRadius: 8, border: '1.5px solid #e2e8f0',
-                        background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 13,
-                        cursor: 'pointer', transition: 'background 0.15s'
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Image Upload Section — Collapsible Mini */}
-          <div className="border-b border-slate-100">
-            <button
-              onClick={() => setPhotoSectionOpen(o => !o)}
-              className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 transition-colors"
-            >
-              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
-                <ImageIcon className="w-3 h-3" />
-                Child Ref Photo
-                {referenceImage && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />}
-              </span>
-              <span className="text-[10px] text-slate-400">{photoSectionOpen ? '▲' : '▼'}</span>
-            </button>
-            {photoSectionOpen && (
-              <div className="px-3 pb-2">
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`relative rounded-lg border-2 border-dashed cursor-pointer overflow-hidden group transition-all
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                  <ImageIcon className="w-3 h-3" />
+                  Child Ref Photo
+                  {referenceImage && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />}
+                </span>
+                <span className="text-[10px] text-slate-400">{photoSectionOpen ? '▲' : '▼'}</span>
+              </button>
+              {photoSectionOpen && (
+                <div className="px-3 pb-2">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`relative rounded-lg border-2 border-dashed cursor-pointer overflow-hidden group transition-all
                     ${referenceImage ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-400 bg-slate-50'}
                     h-20 flex items-center justify-center`}
-                >
-                  {referenceImage ? (
-                    <>
-                      <img src={referenceImage} alt="Reference" className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-50 transition-opacity" />
-                      <div className="relative z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white px-2 py-0.5 rounded-full text-[10px] font-medium">
-                        Change
+                  >
+                    {referenceImage ? (
+                      <>
+                        <img src={referenceImage} alt="Reference" className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-50 transition-opacity" />
+                        <div className="relative z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white px-2 py-0.5 rounded-full text-[10px] font-medium">
+                          Change
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="w-4 h-4 text-indigo-500 mx-auto mb-0.5" />
+                        <p className="text-[10px] text-slate-500">Upload Photo</p>
                       </div>
-                    </>
-                  ) : (
-                    <div className="text-center">
-                      <Upload className="w-4 h-4 text-indigo-500 mx-auto mb-0.5" />
-                      <p className="text-[10px] text-slate-500">Upload Photo</p>
-                    </div>
-                  )}
-                  <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                    )}
+                    <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Model Selection */}
-          <div className="px-3 py-3 border-b border-slate-100">
-            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Model Selection</label>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 w-8 shrink-0">Image:</span>
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className="flex-1 py-1.5 px-2 bg-white border border-slate-200 rounded-lg text-[10px] font-medium text-slate-600 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                >
-                  <option value="pollinations">Pollinations (Free)</option>
-                  <option value="gemini">Gemini Flash</option>
-                  <option value="huggingface">HuggingFace FLUX</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 w-8 shrink-0">Text:</span>
-                <select
-                  value={habitTextModel}
-                  onChange={(e) => setHabitTextModel(e.target.value)}
-                  className="flex-1 py-1.5 px-2 bg-white border border-slate-200 rounded-lg text-[10px] font-medium text-slate-600 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                >
-                  <option value="ollama">Ollama (Local)</option>
-                  <option value="openrouter">OpenRouter (Cloud)</option>
-                </select>
+            {/* Model Selection */}
+            <div className="px-3 py-3 border-b border-slate-100">
+              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Model Selection</label>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-500 w-8 shrink-0">Image:</span>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="flex-1 py-1.5 px-2 bg-white border border-slate-200 rounded-lg text-[10px] font-medium text-slate-600 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  >
+                    <option value="pollinations">Pollinations (Free)</option>
+                    <option value="gemini">Gemini Flash</option>
+                    <option value="huggingface">HuggingFace FLUX</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-500 w-8 shrink-0">Text:</span>
+                  <select
+                    value={habitTextModel}
+                    onChange={(e) => setHabitTextModel(e.target.value)}
+                    className="flex-1 py-1.5 px-2 bg-white border border-slate-200 rounded-lg text-[10px] font-medium text-slate-600 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  >
+                    <option value="ollama">Ollama (Local)</option>
+                    <option value="openrouter">OpenRouter (Cloud)</option>
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Module-Specific Controls & Page Navigators */}
-          <div className="px-3 py-3 flex-1 overflow-y-auto flex flex-col gap-3">
-            {(isBook || isNumbers) ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                    <BookOpen className="w-3 h-3" /> Pages
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    {completedPagesCount}/{pagesList.length} done
-                  </span>
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {pagesList.map(key => (
-                    <button
-                      key={key}
-                      onClick={() => isBook ? setSelectedLetter(key) : setSelectedNumber(key)}
-                      className={`p-1.5 rounded-md text-center font-bold text-xs transition-all
+            {/* Module-Specific Controls & Page Navigators */}
+            <div className="px-3 py-3 flex-1 overflow-y-auto flex flex-col gap-3">
+              {(isBook || isNumbers) ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                      <BookOpen className="w-3 h-3" /> Pages
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {completedPagesCount}/{pagesList.length} done
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {pagesList.map(key => (
+                      <button
+                        key={key}
+                        onClick={() => isBook ? setSelectedLetter(key) : setSelectedNumber(key)}
+                        className={`p-1.5 rounded-md text-center font-bold text-xs transition-all
                         ${activePageKey === key
-                          ? 'bg-indigo-600 text-white shadow ring-2 ring-indigo-600 ring-offset-1'
-                          : activeGeneratedImages[key]
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                            ? 'bg-indigo-600 text-white shadow ring-2 ring-indigo-600 ring-offset-1'
+                            : activeGeneratedImages[key]
+                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
                       `}
-                    >
-                      {key}
-                    </button>
-                  ))}
-                </div>
+                      >
+                        {key}
+                      </button>
+                    ))}
+                  </div>
 
-                {/* ── Customization UI ── */}
-                <div className="mt-2 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl flex flex-col gap-2">
-                  <label className="text-[10px] uppercase font-bold text-indigo-600">Customization</label>
-                  <div className="flex flex-col gap-2">
+                  {/* ── Customization UI ── */}
+                  <div className="mt-2 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl flex flex-col gap-2">
+                    <label className="text-[10px] uppercase font-bold text-indigo-600">Customization</label>
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        placeholder="Enter a new word (e.g. Nuts)"
+                        value={customWord}
+                        onChange={(e) => setCustomWord(e.target.value)}
+                        className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      />
+                      <button
+                        onClick={handleCustomizeAlphabet}
+                        disabled={isCustomizing || !customWord.trim()}
+                        className={`w-full py-2 rounded-lg font-bold text-xs text-white transition-all
+                        ${isCustomizing || !customWord.trim() ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-sm'}`}
+                      >
+                        {isCustomizing ? <><Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> Updating...</> : 'Recreate'}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-indigo-400 leading-tight">This will update the story text and scene prompt based on your new word.</p>
+                  </div>
+
+                  {/* Compile Full Movie — above Save Project */}
+                  {Object.keys(activeGeneratedImages).length > 0 && (
+                    <button
+                      onClick={handleCompileFullMovieClick}
+                      disabled={isCompilingFullVideo || isGeneratingAllActive}
+                      className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
+                      ${(isCompilingFullVideo || isGeneratingAllActive)
+                          ? 'bg-slate-400 text-white cursor-wait'
+                          : 'bg-violet-600 hover:bg-violet-700 text-white'}`}
+                    >
+                      {isCompilingFullVideo
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Compiling Movie...</>
+                        : <>🎬 Compile Full Movie</>}
+                    </button>
+                  )}
+                  {/* Save Project — full width below compile */}
+                  {(currentProjectId || isBook || isNumbers) && (
+                    <button
+                      onClick={handleSaveProject}
+                      disabled={isSavingProject}
+                      className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
+                      ${saveSuccess ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                    >
+                      {isSavingProject
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                        : saveSuccess
+                          ? <>✅ Project Saved!</>
+                          : <>💾 Save Project</>}
+                    </button>
+                  )}
+
+                </>
+              ) : (
+                <>
+                  {/* Title input */}
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+                      {appMode === 'habit' ? 'Training Title' : appMode === 'rhymes' ? 'Rhyme Name' : 'Story Name'}
+                    </label>
                     <input
                       type="text"
-                      placeholder="Enter a new word (e.g. Nuts)"
-                      value={customWord}
-                      onChange={(e) => setCustomWord(e.target.value)}
-                      className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      value={habitTitle}
+                      onChange={(e) => setHabitTitle(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder={
+                        appMode === 'habit' ? 'e.g. Potty Training' :
+                          appMode === 'rhymes' ? 'e.g. Twinkle Twinkle Little Star' : 'e.g. The Magic Forest'
+                      }
                     />
-                    <button
-                      onClick={handleCustomizeAlphabet}
-                      disabled={isCustomizing || !customWord.trim()}
-                      className={`w-full py-2 rounded-lg font-bold text-xs text-white transition-all
-                        ${isCustomizing || !customWord.trim() ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-sm'}`}
-                    >
-                      {isCustomizing ? <><Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> Updating...</> : 'Recreate'}
-                    </button>
                   </div>
-                  <p className="text-[10px] text-indigo-400 leading-tight">This will update the story text and scene prompt based on your new word.</p>
-                </div>
 
-                {/* Compile Full Movie — above Save Project */}
-                {Object.keys(activeGeneratedImages).length > 0 && (
-                  <button
-                    onClick={handleCompileFullMovieClick}
-                    disabled={isCompilingFullVideo || isGeneratingAllActive}
-                    className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
-                      ${(isCompilingFullVideo || isGeneratingAllActive)
-                        ? 'bg-slate-400 text-white cursor-wait'
-                        : 'bg-violet-600 hover:bg-violet-700 text-white'}`}
-                  >
-                    {isCompilingFullVideo
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Compiling Movie...</>
-                      : <>🎬 Compile Full Movie</>}
-                  </button>
-                )}
-                {/* Save Project — full width below compile */}
-                {(currentProjectId || isBook || isNumbers) && (
-                  <button
-                    onClick={handleSaveProject}
-                    disabled={isSavingProject}
-                    className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
-                      ${saveSuccess ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
-                  >
-                    {isSavingProject
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
-                      : saveSuccess
-                      ? <>✅ Project Saved!</>
-                      : <>💾 Save Project</>}
-                  </button>
-                )}
+                  {/* ── Phase 4: Rhyme Mode Controls ─────────────────── */}
+                  {appMode === 'rhymes' && (
+                    <div className="flex flex-col gap-2 p-2.5 bg-purple-50 border border-purple-100 rounded-xl">
+                      <label className="block text-[10px] uppercase font-bold text-purple-500 mb-0.5 flex items-center gap-1">
+                        🎵 Rhyme Selection
+                      </label>
+                      {/* Preset picker */}
+                      <select
+                        value={selectedRhymeKey}
+                        onChange={(e) => {
+                          setSelectedRhymeKey(e.target.value);
+                          // Auto-populate title from preset name
+                          const preset = rhymePresets.find(p => p.key === e.target.value);
+                          if (preset && e.target.value !== 'custom') setHabitTitle(preset.title);
+                        }}
+                        className="w-full py-1.5 px-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                      >
+                        {rhymePresets.map(p => (
+                          <option key={p.key} value={p.key}>{p.title}</option>
+                        ))}
+                        <option value="custom">✏️ Custom Rhyme...</option>
+                      </select>
+                      {/* Custom rhyme text area */}
+                      {selectedRhymeKey === 'custom' && (
+                        <textarea
+                          rows={5}
+                          value={customRhymeText}
+                          onChange={(e) => setCustomRhymeText(e.target.value)}
+                          className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs text-slate-700 focus:ring-1 focus:ring-purple-400 focus:outline-none resize-none font-mono leading-relaxed"
+                          placeholder={"Paste your rhyme here, line by line.\nEach group of 2-4 lines becomes one page.\n\nExample:\nTwinkle twinkle little star,\nHow I wonder what you are!"}
+                        />
+                      )}
+                      {selectedRhymeKey !== 'custom' && (
+                        <p className="text-[10px] text-purple-400 italic">
+                          Rhyme lines are loaded verbatim — the AI will not alter them.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-              </>
-            ) : (
-              <>
-                {/* Title input */}
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
-                    {appMode === 'habit' ? 'Training Title' : appMode === 'rhymes' ? 'Rhyme Name' : 'Story Name'}
-                  </label>
-                  <input
-                    type="text"
-                    value={habitTitle}
-                    onChange={(e) => setHabitTitle(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    placeholder={
-                      appMode === 'habit' ? 'e.g. Potty Training' :
-                      appMode === 'rhymes' ? 'e.g. Twinkle Twinkle Little Star' : 'e.g. The Magic Forest'
-                    }
-                  />
-                </div>
+                  {/* ── Phase 4: Story Mode Controls ──────────────────── */}
+                  {appMode === 'story' && (
+                    <div className="flex flex-col gap-2 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl">
+                      <button
+                        onClick={() => setStoryConceptOpen(o => !o)}
+                        className="w-full flex items-center justify-between text-left focus:outline-none"
+                      >
+                        <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-600">
+                          📖 Story Concept
+                        </span>
+                        <span className="text-[10px] text-emerald-500 font-semibold">{storyConceptOpen ? '▲' : '▼'}</span>
+                      </button>
+                      {storyConceptOpen && (
+                        <div className="flex flex-col gap-2 w-full mt-1 animate-fadeIn">
+                          <textarea
+                            rows={4}
+                            value={storyPrompt}
+                            onChange={(e) => setStoryPrompt(e.target.value)}
+                            className="w-full p-2 bg-white border border-emerald-250 rounded-lg text-xs text-slate-700 focus:ring-1 focus:ring-emerald-400 focus:outline-none resize-none leading-relaxed"
+                            placeholder={"Describe your story idea in 1-3 sentences.\n\nExamples:\n• A baby bear finds a secret honey cave in the forest.\n• A little girl builds a rocket ship and flies to the moon.\n• A tiny fish learns to be brave in the big ocean."}
+                          />
+                          <p className="text-[10px] text-emerald-500 italic mb-1">
+                            The AI will plan sequential scenes with unique settings and props on each page.
+                          </p>
+                          {/* Total Pages inside the Story collapse */}
+                          <div className="flex items-center gap-2">
+                            <label className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Total Pages</label>
+                            <input
+                              type="number"
+                              min="6"
+                              max="16"
+                              value={habitTotalPages}
+                              onChange={(e) => {
+                                const minVal = 6;
+                                const v = Math.max(minVal, parseInt(e.target.value) || minVal);
+                                setHabitTotalPages(v);
+                                setHabitTotalScenes(v);
+                              }}
+                              className="w-16 p-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none text-center"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                {/* ── Phase 4: Rhyme Mode Controls ─────────────────── */}
-                {appMode === 'rhymes' && (
-                  <div className="flex flex-col gap-2 p-2.5 bg-purple-50 border border-purple-100 rounded-xl">
-                    <label className="block text-[10px] uppercase font-bold text-purple-500 mb-0.5 flex items-center gap-1">
-                      🎵 Rhyme Selection
-                    </label>
-                    {/* Preset picker */}
-                    <select
-                      value={selectedRhymeKey}
-                      onChange={(e) => {
-                        setSelectedRhymeKey(e.target.value);
-                        // Auto-populate title from preset name
-                        const preset = rhymePresets.find(p => p.key === e.target.value);
-                        if (preset && e.target.value !== 'custom') setHabitTitle(preset.title);
-                      }}
-                      className="w-full py-1.5 px-2 bg-white border border-purple-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-400"
-                    >
-                      {rhymePresets.map(p => (
-                        <option key={p.key} value={p.key}>{p.title}</option>
-                      ))}
-                      <option value="custom">✏️ Custom Rhyme...</option>
-                    </select>
-                    {/* Custom rhyme text area */}
-                    {selectedRhymeKey === 'custom' && (
-                      <textarea
-                        rows={5}
-                        value={customRhymeText}
-                        onChange={(e) => setCustomRhymeText(e.target.value)}
-                        className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs text-slate-700 focus:ring-1 focus:ring-purple-400 focus:outline-none resize-none font-mono leading-relaxed"
-                        placeholder={"Paste your rhyme here, line by line.\nEach group of 2-4 lines becomes one page.\n\nExample:\nTwinkle twinkle little star,\nHow I wonder what you are!"}
+                  {/* Standalone Total Pages for non-story, non-rhymes modes (e.g. habit mode) */}
+                  {appMode !== 'story' && appMode !== 'rhymes' && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Total Pages</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="16"
+                        value={habitTotalPages}
+                        onChange={(e) => {
+                          const minVal = 1;
+                          const v = Math.max(minVal, parseInt(e.target.value) || minVal);
+                          setHabitTotalPages(v);
+                          setHabitTotalScenes(v);
+                        }}
+                        className="w-16 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none text-center"
                       />
-                    )}
-                    {selectedRhymeKey !== 'custom' && (
-                      <p className="text-[10px] text-purple-400 italic">
-                        Rhyme lines are loaded verbatim — the AI will not alter them.
-                      </p>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
 
-                {/* ── Phase 4: Story Mode Controls ──────────────────── */}
-                {appMode === 'story' && (
-                  <div className="flex flex-col gap-2 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl">
-                    <label className="block text-[10px] uppercase font-bold text-emerald-600 mb-0.5 flex items-center gap-1">
-                      📖 Story Concept
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={storyPrompt}
-                      onChange={(e) => setStoryPrompt(e.target.value)}
-                      className="w-full p-2 bg-white border border-emerald-200 rounded-lg text-xs text-slate-700 focus:ring-1 focus:ring-emerald-400 focus:outline-none resize-none leading-relaxed"
-                      placeholder={"Describe your story idea in 1-3 sentences.\n\nExamples:\n• A baby bear finds a secret honey cave in the forest.\n• A little girl builds a rocket ship and flies to the moon.\n• A tiny fish learns to be brave in the big ocean."}
-                    />
-                    <p className="text-[10px] text-emerald-500 italic">
-                      The AI will plan sequential scenes with unique settings and props on each page.
-                    </p>
-                  </div>
-                )}
+                  {/* Generate / Review buttons — equal size, taller */}
+                  {agentOutputs.scene_plan?.id ? (
 
-                {/* Total Pages */}
-                {appMode !== 'rhymes' && (
-                  <div className="flex items-center gap-2">
-                    <label className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Total Pages</label>
-                    <input
-                      type="number"
-                      min={appMode === 'story' ? "6" : "1"}
-                      max="16"
-                      value={habitTotalPages}
-                      onChange={(e) => {
-                        const minVal = appMode === 'story' ? 6 : 1;
-                        const v = Math.max(minVal, parseInt(e.target.value) || minVal);
-                        setHabitTotalPages(v);
-                        setHabitTotalScenes(v);
-                      }}
-                      className="w-16 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none text-center"
-                    />
-                  </div>
-                )}
-
-                {/* Generate / Review buttons — equal size, taller */}
-                {agentOutputs.scene_plan?.id ? (
-
-                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={handleGenerateCorePlan}
+                        disabled={isGeneratingHabitPlan}
+                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all
+                        ${isGeneratingHabitPlan ? 'bg-indigo-400 text-white cursor-wait' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
+                      >
+                        {isGeneratingHabitPlan ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> {habitPlanProgress.total === 0 ? `Analyzing (${TEXT_MODEL_LABELS[habitTextModel] || habitTextModel})...` : `Generating (${TEXT_MODEL_LABELS[habitTextModel] || habitTextModel}): ${habitPlanProgress.done}/${habitPlanProgress.total} pages`}</>
+                        ) : (
+                          <><Sparkles className="w-4 h-4" /> Re-generate Plan</>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setReviewPanelOpen(true)}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-violet-600 hover:bg-violet-700 text-white shadow-md transition-all"
+                      >
+                        🤖 Review Core Agent
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       onClick={handleGenerateCorePlan}
                       disabled={isGeneratingHabitPlan}
                       className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all
-                        ${isGeneratingHabitPlan ? 'bg-indigo-400 text-white cursor-wait' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
+                      ${isGeneratingHabitPlan ? 'bg-indigo-400 text-white cursor-wait' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
                     >
                       {isGeneratingHabitPlan ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> {habitPlanProgress.total === 0 ? `Analyzing (${TEXT_MODEL_LABELS[habitTextModel] || habitTextModel})...` : `Generating (${TEXT_MODEL_LABELS[habitTextModel] || habitTextModel}): ${habitPlanProgress.done}/${habitPlanProgress.total} pages`}</>
                       ) : (
-                        <><Sparkles className="w-4 h-4" /> Re-generate Plan</>
+                        <><Sparkles className="w-4 h-4" /> Generate Plan</>
                       )}
                     </button>
-                    <button
-                      onClick={() => setReviewPanelOpen(true)}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-violet-600 hover:bg-violet-700 text-white shadow-md transition-all"
-                    >
-                      🤖 Review Core Agent
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleGenerateCorePlan}
-                    disabled={isGeneratingHabitPlan}
-                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all
-                      ${isGeneratingHabitPlan ? 'bg-indigo-400 text-white cursor-wait' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
-                  >
-                    {isGeneratingHabitPlan ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> {habitPlanProgress.total === 0 ? `Analyzing (${TEXT_MODEL_LABELS[habitTextModel] || habitTextModel})...` : `Generating (${TEXT_MODEL_LABELS[habitTextModel] || habitTextModel}): ${habitPlanProgress.done}/${habitPlanProgress.total} pages`}</>
-                    ) : (
-                      <><Sparkles className="w-4 h-4" /> Generate Plan</>
-                    )}
-                  </button>
-                )}
+                  )}
 
-                {/* Similarity badge */}
-                {similarityInfo?.found && !isGeneratingHabitPlan && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-[10px] text-blue-700 font-semibold">
-                    <span>⚡</span>
-                    <span>Similar found ({Math.round((similarityInfo.similarity_score || 0) * 100)}% match)</span>
-                  </div>
-                )}
-
-                {/* Pages grid + Compile Movie + Save Project */}
-                {Object.keys(habitPrompts).length > 0 && (
-                  <div className="pt-2 border-t border-slate-100">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
-                        Pages &middot; {Object.keys(habitGeneratedImages).length}/{Object.keys(habitPrompts).length} done
-                      </span>
+                  {/* Similarity badge */}
+                  {similarityInfo?.found && !isGeneratingHabitPlan && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-[10px] text-blue-700 font-semibold">
+                      <span>⚡</span>
+                      <span>Similar found ({Math.round((similarityInfo.similarity_score || 0) * 100)}% match)</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {Object.keys(habitPrompts)
-                        .sort((a, b) => (parseInt(a.split(' ')[1]) || 0) - (parseInt(b.split(' ')[1]) || 0))
-                        .map(page => (
-                          <button
-                            key={page}
-                            onClick={() => setSelectedHabitPage(page)}
-                            className={`p-1.5 rounded-lg text-center font-bold text-xs transition-all truncate
+                  )}
+
+                  {/* Pages grid + Compile Movie + Save Project */}
+                  {Object.keys(habitPrompts).length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                          Pages &middot; {Object.keys(habitGeneratedImages).length}/{Object.keys(habitPrompts).length} done
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {Object.keys(habitPrompts)
+                          .sort((a, b) => (parseInt(a.split(' ')[1]) || 0) - (parseInt(b.split(' ')[1]) || 0))
+                          .map(page => (
+                            <button
+                              key={page}
+                              onClick={() => setSelectedHabitPage(page)}
+                              className={`p-1.5 rounded-lg text-center font-bold text-xs transition-all truncate
                               ${selectedHabitPage === page
-                                ? 'bg-indigo-600 text-white shadow ring-2 ring-indigo-600 ring-offset-1'
-                                : habitGeneratedImages[page]
-                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                                  ? 'bg-indigo-600 text-white shadow ring-2 ring-indigo-600 ring-offset-1'
+                                  : habitGeneratedImages[page]
+                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
                             `}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                    </div>
-                    {/* Compile Full Movie — above Save Project */}
-                    {Object.keys(activeGeneratedImages).length > 0 && (
-                      <button
-                        onClick={handleCompileFullMovieClick}
-                        disabled={isCompilingFullVideo || isGeneratingAllActive}
-                        className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
+                            >
+                              {page}
+                            </button>
+                          ))}
+                      </div>
+                      {/* Compile Full Movie — above Save Project */}
+                      {Object.keys(activeGeneratedImages).length > 0 && (
+                        <button
+                          onClick={handleCompileFullMovieClick}
+                          disabled={isCompilingFullVideo || isGeneratingAllActive}
+                          className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
                           ${(isCompilingFullVideo || isGeneratingAllActive)
-                            ? 'bg-slate-400 text-white cursor-wait'
-                            : 'bg-violet-600 hover:bg-violet-700 text-white'}`}
-                      >
-                        {isCompilingFullVideo
-                          ? <><Loader2 className="w-4 h-4 animate-spin" /> Compiling Movie...</>
-                          : <>🎬 Compile Full Movie</>}
-                      </button>
-                    )}
-                    {/* Save Project — full width below compile */}
-                    {currentProjectId && (
-                      <button
-                        onClick={handleSaveProject}
-                        disabled={isSavingProject}
-                        className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
+                              ? 'bg-slate-400 text-white cursor-wait'
+                              : 'bg-violet-600 hover:bg-violet-700 text-white'}`}
+                        >
+                          {isCompilingFullVideo
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Compiling Movie...</>
+                            : <>🎬 Compile Full Movie</>}
+                        </button>
+                      )}
+                      {/* Save Project — full width below compile */}
+                      {currentProjectId && (
+                        <button
+                          onClick={handleSaveProject}
+                          disabled={isSavingProject}
+                          className={`mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all shadow-md
                           ${saveSuccess ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
-                      >
-                        {isSavingProject
-                          ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
-                          : saveSuccess
-                          ? <>✅ Project Saved!</>
-                          : <>💾 Save Project</>}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+                        >
+                          {isSavingProject
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                            : saveSuccess
+                              ? <>✅ Project Saved!</>
+                              : <>💾 Save Project</>}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Save Project removed from bottom — moved inline above pages */}
+
           </div>
 
-          {/* Save Project removed from bottom — moved inline above pages */}
+          {/* Right Area - Canvas & Prompt Editor */}
+          <div className="flex-1 bg-slate-50 flex flex-col" style={{ height: 'calc(100vh - 57px)' }}>
+            <div className="flex-1 p-3 flex gap-3 w-full overflow-hidden">
 
-        </div>
+              {/* Center Panel: Canvas — 35% of 60% remaining = 58% of right area */}
+              <div style={{ width: '58%' }} className="flex flex-col min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-lg font-bold text-slate-800">
+                    {centerViewMode === 'movie'
+                      ? `🎬 Continuous Full ${isBook ? 'Storybook' : isNumbers ? 'Numbers Book' : habitTitle} Movie`
+                      : (isBook ? `Letter ${activePageKey} Page` : isNumbers ? `Number ${activePageKey} Page` : `${habitTitle} - ${activePageKey}`)}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    {/* View Mode Pill Switcher */}
+                    {fullBookVideoUrl && (
+                      <div className="flex bg-slate-200 p-0.5 rounded-xl border border-slate-300">
+                        <button
+                          onClick={() => setCenterViewMode('page')}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${centerViewMode === 'page'
+                            ? 'bg-white text-indigo-600 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                          🖼️ Page Preview
+                        </button>
+                        <button
+                          onClick={() => setCenterViewMode('movie')}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${centerViewMode === 'movie'
+                            ? 'bg-white text-indigo-600 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                          🎬 Full Movie
+                        </button>
+                      </div>
+                    )}
 
-        {/* Right Area - Canvas & Prompt Editor */}
-        <div className="flex-1 bg-slate-50 flex flex-col" style={{ height: 'calc(100vh - 57px)' }}>
-          <div className="flex-1 p-3 flex gap-3 w-full overflow-hidden">
+                    {centerViewMode === 'page' && activeModelUsed[activePageKey] && (
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs font-medium rounded-full">
+                        via {MODEL_LABELS[activeModelUsed[activePageKey]]}
+                      </span>
+                    )}
+                    {centerViewMode === 'page' && activeGeneratedImages[activePageKey] && (
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-wide rounded-full flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Generated
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-            {/* Center Panel: Canvas — 35% of 60% remaining = 58% of right area */}
-            <div style={{ width: '58%' }} className="flex flex-col min-w-0">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-bold text-slate-800">
-                  {centerViewMode === 'movie'
-                    ? `🎬 Continuous Full ${isBook ? 'Storybook' : isNumbers ? 'Numbers Book' : habitTitle} Movie`
-                    : (isBook ? `Letter ${activePageKey} Page` : isNumbers ? `Number ${activePageKey} Page` : `${habitTitle} - ${activePageKey}`)}
-                </h2>
-                <div className="flex items-center gap-2">
-                  {/* View Mode Pill Switcher */}
-                  {fullBookVideoUrl && (
-                    <div className="flex bg-slate-200 p-0.5 rounded-xl border border-slate-300">
-                      <button
-                        onClick={() => setCenterViewMode('page')}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${centerViewMode === 'page'
-                          ? 'bg-white text-indigo-600 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
-                          }`}
-                      >
-                        🖼️ Page Preview
-                      </button>
-                      <button
-                        onClick={() => setCenterViewMode('movie')}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${centerViewMode === 'movie'
-                          ? 'bg-white text-indigo-600 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
-                          }`}
-                      >
-                        🎬 Full Movie
-                      </button>
-                    </div>
-                  )}
+                <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200 flex items-center justify-center min-h-0">
+                    {centerViewMode === 'movie' && fullBookVideoUrl ? (
+                      /* Continuous Full-Length Storybook Movie Playout */
+                      <div className="flex flex-col h-full w-full bg-black relative">
+                        <video
+                          key={`${fullBookVideoUrl}?t=${fullMovieCacheBuster}`}
+                          src={`${fullBookVideoUrl}?t=${fullMovieCacheBuster}`}
+                          controls
+                          autoPlay
+                          className="w-full h-full object-contain"
+                        />
+                        <div className="absolute bottom-4 right-4 flex gap-2">
+                          <a
+                            href={fullBookVideoUrl}
+                            download={`${isBook ? 'Full_Storybook_Movie' : habitTitle}_complete.mp4`}
+                            className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-lg transition-all"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Download Full Movie
+                          </a>
+                        </div>
+                      </div>
+                    ) : isGeneratingActiveImage ? (
+                      <div className="flex flex-col items-center text-indigo-600">
+                        <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                        <p className="font-medium animate-pulse text-sm">Painting your masterpiece...</p>
+                        <span className="text-[10px] text-slate-400 mt-1 font-semibold tracking-wide">
+                          Using: {MODEL_LABELS[selectedModel] || selectedModel}
+                        </span>
+                      </div>
+                    ) : activeGeneratedImages[activePageKey] ? (
+                      <div className="flex flex-col h-full w-full bg-white overflow-hidden">
+                        {/* Image Section */}
+                        <div className="flex-1 bg-slate-50 relative min-h-0 flex items-center justify-center p-2">
+                          <img
+                            src={activeGeneratedImages[activePageKey]}
+                            alt={`Generated illustration for ${activePageKey}`}
+                            className="w-full h-full object-contain rounded-lg shadow-sm border border-slate-200"
+                          />
+                        </div>
+                        {/* Storybook Text Banner */}
+                        <div className="px-4 py-3 bg-white border-t-2 border-indigo-100 flex-shrink-0">
+                          <p className="w-full text-center text-base font-bold text-slate-800 leading-relaxed font-serif tracking-wide p-2">
+                            {activeStories[activePageKey] || 'Story text will appear here after generating...'}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-slate-400 p-6">
+                        <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                        <p className="font-medium text-slate-500 mb-1">Canvas is empty</p>
+                        <p className="text-xs">Click generate to render the '{activePageKey}' illustration</p>
+                      </div>
+                    )}
+                  </div>
 
-                  {centerViewMode === 'page' && activeModelUsed[activePageKey] && (
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs font-medium rounded-full">
-                      via {MODEL_LABELS[activeModelUsed[activePageKey]]}
-                    </span>
-                  )}
-                  {centerViewMode === 'page' && activeGeneratedImages[activePageKey] && (
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-wide rounded-full flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Generated
-                    </span>
+                  {centerViewMode === 'page' && (
+                    <>
+                      {error && (
+                        <div className="mt-2 p-2 bg-red-50 text-red-700 rounded-lg border border-red-100 flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                          <p className="text-xs">{error}</p>
+                        </div>
+                      )}
+
+                      {/* Single page generate + download */}
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={() => handleGenerateImage(activePageKey, activePromptText)}
+                          disabled={isGeneratingActiveImage || isGeneratingAllActive || (!(isBook || isNumbers) && Object.keys(habitPrompts).length === 0)}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-xs transition-all
+                          ${(isGeneratingActiveImage || isGeneratingAllActive || (!(isBook || isNumbers) && Object.keys(habitPrompts).length === 0)) ? 'bg-indigo-400 text-white cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
+                        >
+                          {isGeneratingActiveImage ? (
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating ({MODEL_LABELS[selectedModel] || selectedModel})...</>
+                          ) : (
+                            <><Sparkles className="w-3.5 h-3.5" /> Generate '{activePageKey}'</>
+                          )}
+                        </button>
+
+                        {activeGeneratedImages[activePageKey] && (
+                          <button
+                            onClick={() => handleDownloadPage(activePageKey)}
+                            className="px-3 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
+                            title="Download Page with Text"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+
+                      {/* ── Action Row: Generate All Pages | Download All ── */}
+                      {(isBook || isNumbers || Object.keys(habitPrompts).length > 0) && (
+                        <>
+                          <div className="mt-2 flex items-center gap-2">
+                            {/* Generate All Pages */}
+                            <button
+                              onClick={handleGenerateAll}
+                              disabled={isGeneratingAllActive}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-sm transition-all shadow-sm
+                              ${isGeneratingAllActive ? 'bg-amber-400 text-white cursor-wait' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}
+                            >
+                              {isGeneratingAllActive
+                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating ({MODEL_LABELS[selectedModel] || selectedModel})...</>
+                                : <><Sparkles className="w-4 h-4" /> Generate All Pages</>}
+                            </button>
+
+                            {/* Download All */}
+                            {Object.keys(activeGeneratedImages).length > 0 && (
+                              <button
+                                onClick={handleDownloadAll}
+                                title={`Download All (${Object.keys(activeGeneratedImages).length})`}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all"
+                              >
+                                <Download className="w-4 h-4" />
+                                Download All ({Object.keys(activeGeneratedImages).length})
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Auto-Tune Script for All Pages */}
+                          <div className={`mt-2 grid gap-2 ${isTuningScriptAll ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            <button
+                              onClick={handleTuneScriptAll}
+                              disabled={isTuningScriptAll || isGeneratingAllActive}
+                              className="flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white disabled:opacity-50"
+                            >
+                              {isTuningScriptAll ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Tuning ({TEXT_MODEL_LABELS[habitTextModel] || 'Ollama'})
+                                </>
+                              ) : (
+                                <>✨ Auto-Tune All Scripts ({TEXT_MODEL_LABELS[habitTextModel] || 'Ollama'})</>
+                              )}
+                            </button>
+
+                            {isTuningScriptAll && (
+                              <button
+                                onClick={handleAbortTuning}
+                                className="flex items-center justify-center gap-1 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs shadow-md transition-all"
+                                title="Stop Tuning All Scripts"
+                              >
+                                ✕ Stop
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Progress bar */}
+                      {allProgress && (
+                        <div className="mt-1.5 flex items-center gap-1.5 p-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-[10px] text-indigo-700 font-bold animate-pulse">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          {allProgress}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
 
-              <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col min-h-0">
-                <div className="flex-1 bg-slate-100 rounded-xl overflow-hidden relative border border-slate-200 flex items-center justify-center min-h-0">
-                  {centerViewMode === 'movie' && fullBookVideoUrl ? (
-                    /* Continuous Full-Length Storybook Movie Playout */
-                    <div className="flex flex-col h-full w-full bg-black relative">
-                      <video
-                        key={`${fullBookVideoUrl}?t=${fullMovieCacheBuster}`}
-                        src={`${fullBookVideoUrl}?t=${fullMovieCacheBuster}`}
-                        controls
-                        autoPlay
-                        className="w-full h-full object-contain"
-                      />
-                      <div className="absolute bottom-4 right-4 flex gap-2">
-                        <a
-                          href={fullBookVideoUrl}
-                          download={`${isBook ? 'Full_Storybook_Movie' : habitTitle}_complete.mp4`}
-                          className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-lg transition-all"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Download Full Movie
-                        </a>
-                      </div>
-                    </div>
-                  ) : isGeneratingActiveImage ? (
-                    <div className="flex flex-col items-center text-indigo-600">
-                      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-                      <p className="font-medium animate-pulse text-sm">Painting your masterpiece...</p>
-                      <span className="text-[10px] text-slate-400 mt-1 font-semibold tracking-wide">
-                        Using: {MODEL_LABELS[selectedModel] || selectedModel}
-                      </span>
-                    </div>
-                  ) : activeGeneratedImages[activePageKey] ? (
-                    <div className="flex flex-col h-full w-full bg-white overflow-hidden">
-                      {/* Image Section */}
-                      <div className="flex-1 bg-slate-50 relative min-h-0 flex items-center justify-center p-2">
-                        <img
-                          src={activeGeneratedImages[activePageKey]}
-                          alt={`Generated illustration for ${activePageKey}`}
-                          className="w-full h-full object-contain rounded-lg shadow-sm border border-slate-200"
+              {/* Right Panel: Editor & Audio/Video Studio — 25% of 60% remaining = 42% of right area */}
+              <div style={{ width: '42%' }} className="flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm overflow-hidden">
+
+                {/* Tab Selector pills */}
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 mb-4 shrink-0">
+                  <button
+                    onClick={() => setRightPanelTab('editor')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rightPanelTab === 'editor'
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                  >
+                    📝 Page Story &amp; Prompt Editor
+                  </button>
+                  <button
+                    onClick={() => setRightPanelTab('studio')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rightPanelTab === 'studio'
+                        ? 'bg-white text-indigo-650 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                  >
+                    🎙️ Audio &amp; Video Studio
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto pr-1">
+                  {rightPanelTab === 'editor' ? (
+                    /* Expanded Page Story & Prompt Editor */
+                    <div className="flex-1 flex flex-col min-h-0 space-y-4">
+                      {/* Narration Text Area */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[10px] uppercase font-bold text-slate-400">Narration Text (Storyline)</label>
+                          {tempStoryText !== (activeStories[activePageKey] || '') && (
+                            <div className="flex items-center gap-1.5 animate-fadeIn">
+                              <button
+                                onClick={handleSaveStoryEdit}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold transition-all border border-emerald-200"
+                                title="Save story narration"
+                              >
+                                ✓ Save
+                              </button>
+                              <button
+                                onClick={handleCancelStoryEdit}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold transition-all border border-rose-200"
+                                title="Reset edits"
+                              >
+                                ✕ Reset
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <textarea
+                          value={tempStoryText}
+                          onChange={(e) => setTempStoryText(e.target.value)}
+                          rows={3}
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none font-medium text-slate-700"
+                          placeholder="Story narration text will appear here..."
                         />
                       </div>
-                      {/* Storybook Text Banner */}
-                      <div className="px-4 py-3 bg-white border-t-2 border-indigo-100 flex-shrink-0">
-                        <p className="w-full text-center text-base font-bold text-slate-800 leading-relaxed font-serif tracking-wide p-2">
-                          {activeStories[activePageKey] || 'Story text will appear here after generating...'}
-                        </p>
+
+                      {/* Prompt Text Area */}
+                      <div className="flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[10px] uppercase font-bold text-slate-400">Image Generation Prompt</label>
+                          {tempPromptText !== (activePromptText || '') && (
+                            <div className="flex items-center gap-1.5 animate-fadeIn">
+                              <button
+                                onClick={handleSavePromptEdit}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold transition-all border border-emerald-200"
+                                title="Save image prompt"
+                              >
+                                ✓ Save
+                              </button>
+                              <button
+                                onClick={handleCancelPromptEdit}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold transition-all border border-rose-200"
+                                title="Reset edits"
+                              >
+                                ✕ Reset
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <textarea
+                          value={tempPromptText}
+                          onChange={(e) => setTempPromptText(e.target.value)}
+                          className="w-full flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none font-mono text-slate-650"
+                          placeholder="Image generation prompt..."
+                        />
+                      </div>
+
+                      {/* Ratings */}
+                      <div className="pt-3 border-t border-slate-100 space-y-3">
+                        <div>
+                          <span className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Page Rating ({activePageKey})</span>
+                          <div className="flex items-center gap-2">
+                            <StarRating value={pageRatings[activePageKey] || 0} onChange={handlePageRating} />
+                            <span className="text-xs font-semibold text-amber-600">
+                              {pageRatings[activePageKey] ? `${pageRatings[activePageKey]} / 5` : 'Unrated'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Book-Level Rating (All Pages)</span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleBookRate(5)}
+                              className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all"
+                            >
+                              👍 Thumbs Up All
+                            </button>
+                            <button
+                              onClick={() => handleBookRate(1)}
+                              className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-sm transition-all"
+                            >
+                              👎 Thumbs Down
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-slate-400 p-6">
-                      <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                      <p className="font-medium text-slate-500 mb-1">Canvas is empty</p>
-                      <p className="text-xs">Click generate to render the '{activePageKey}' illustration</p>
-                    </div>
-                  )}
-                </div>
-
-                {centerViewMode === 'page' && (
-                  <>
-                    {error && (
-                      <div className="mt-2 p-2 bg-red-50 text-red-700 rounded-lg border border-red-100 flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                        <p className="text-xs">{error}</p>
-                      </div>
-                    )}
-
-                    {/* Single page generate + download */}
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => handleGenerateImage(activePageKey, activePromptText)}
-                        disabled={isGeneratingActiveImage || isGeneratingAllActive || (!(isBook || isNumbers) && Object.keys(habitPrompts).length === 0)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-xs transition-all
-                          ${(isGeneratingActiveImage || isGeneratingAllActive || (!(isBook || isNumbers) && Object.keys(habitPrompts).length === 0)) ? 'bg-indigo-400 text-white cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
-                      >
-                        {isGeneratingActiveImage ? (
-                          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating ({MODEL_LABELS[selectedModel] || selectedModel})...</>
-                        ) : (
-                          <><Sparkles className="w-3.5 h-3.5" /> Generate '{activePageKey}'</>
-                        )}
-                      </button>
-
-                      {activeGeneratedImages[activePageKey] && (
-                        <button
-                          onClick={() => handleDownloadPage(activePageKey)}
-                          className="px-3 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
-                          title="Download Page with Text"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-
-                    {/* ── Action Row: Generate All Pages | Download All ── */}
-                    {(isBook || isNumbers || Object.keys(habitPrompts).length > 0) && (
-                      <div className="mt-2 flex items-center gap-2">
-                        {/* Generate All Pages */}
-                        <button
-                          onClick={handleGenerateAll}
-                          disabled={isGeneratingAllActive}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-sm transition-all shadow-sm
-                            ${isGeneratingAllActive ? 'bg-amber-400 text-white cursor-wait' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}
-                        >
-                          {isGeneratingAllActive
-                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating ({MODEL_LABELS[selectedModel] || selectedModel})...</>
-                            : <><Sparkles className="w-4 h-4" /> Generate All Pages</>}
-                        </button>
-
-                        {/* Download All */}
-                        {Object.keys(activeGeneratedImages).length > 0 && (
-                          <button
-                            onClick={handleDownloadAll}
-                            title={`Download All (${Object.keys(activeGeneratedImages).length})`}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all"
+                    /* Expanded Audio & Video Studio */
+                    <div className="flex-1 flex flex-col min-h-0 space-y-4">
+                      {/* TTS Selection */}
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">1. Voice</h4>
+                        <div className="flex gap-1.5">
+                          <select
+                            value={selectedVoice}
+                            onChange={(e) => setSelectedVoice(e.target.value)}
+                            className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none"
                           >
-                            <Download className="w-4 h-4" />
-                            Download All ({Object.keys(activeGeneratedImages).length})
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Progress bar */}
-                    {allProgress && (
-                      <div className="mt-1.5 flex items-center gap-1.5 p-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-[10px] text-indigo-700 font-bold animate-pulse">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        {allProgress}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Right Panel: Editor & Audio/Video Studio — 25% of 60% remaining = 42% of right area */}
-            <div style={{ width: '42%' }} className="flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm overflow-hidden">
-              
-              {/* Tab Selector pills */}
-              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 mb-4 shrink-0">
-                <button
-                  onClick={() => setRightPanelTab('editor')}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    rightPanelTab === 'editor'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  📝 Page Story &amp; Prompt Editor
-                </button>
-                <button
-                  onClick={() => setRightPanelTab('studio')}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    rightPanelTab === 'studio'
-                      ? 'bg-white text-indigo-650 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  🎙️ Audio &amp; Video Studio
-                </button>
-              </div>
-
-              {/* Tab Content */}
-              <div className="flex-1 flex flex-col min-h-0 overflow-y-auto pr-1">
-                {rightPanelTab === 'editor' ? (
-                  /* Expanded Page Story & Prompt Editor */
-                  <div className="flex-1 flex flex-col min-h-0 space-y-4">
-                    {/* Narration Text Area */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[10px] uppercase font-bold text-slate-400">Narration Text (Storyline)</label>
-                        {tempStoryText !== (activeStories[activePageKey] || '') && (
-                          <div className="flex items-center gap-1.5 animate-fadeIn">
-                            <button
-                              onClick={handleSaveStoryEdit}
-                              className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold transition-all border border-emerald-200"
-                              title="Save story narration"
-                            >
-                              ✓ Save
-                            </button>
-                            <button
-                              onClick={handleCancelStoryEdit}
-                              className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold transition-all border border-rose-200"
-                              title="Cancel edits"
-                            >
-                              ✕ Cancel
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <textarea
-                        value={tempStoryText}
-                        onChange={(e) => setTempStoryText(e.target.value)}
-                        rows={3}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none font-medium text-slate-700"
-                        placeholder="Story narration text will appear here..."
-                      />
-                    </div>
-
-                    {/* Prompt Text Area */}
-                    <div className="flex-1 flex flex-col min-h-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[10px] uppercase font-bold text-slate-400">Image Generation Prompt</label>
-                        {tempPromptText !== (activePromptText || '') && (
-                          <div className="flex items-center gap-1.5 animate-fadeIn">
-                            <button
-                              onClick={handleSavePromptEdit}
-                              className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold transition-all border border-emerald-200"
-                              title="Save image prompt"
-                            >
-                              ✓ Save
-                            </button>
-                            <button
-                              onClick={handleCancelPromptEdit}
-                              className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold transition-all border border-rose-200"
-                              title="Cancel edits"
-                            >
-                              ✕ Cancel
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <textarea
-                        value={tempPromptText}
-                        onChange={(e) => setTempPromptText(e.target.value)}
-                        className="w-full flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none font-mono text-slate-650"
-                        placeholder="Image generation prompt..."
-                      />
-                    </div>
-
-                    {/* Ratings */}
-                    <div className="pt-3 border-t border-slate-100 space-y-3">
-                      <div>
-                        <span className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Page Rating ({activePageKey})</span>
-                        <div className="flex items-center gap-2">
-                          <StarRating value={pageRatings[activePageKey] || 0} onChange={handlePageRating} />
-                          <span className="text-xs font-semibold text-amber-600">
-                            {pageRatings[activePageKey] ? `${pageRatings[activePageKey]} / 5` : 'Unrated'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <span className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Book-Level Rating (All Pages)</span>
-                        <div className="flex gap-2">
+                            <optgroup label="Microsoft Edge (Free Fast)">
+                              <option value="en-US-AriaNeural">Edge: Aria (US Female) ⭐</option>
+                              <option value="en-US-GuyNeural">Edge: Guy (US Male)</option>
+                              <option value="en-US-AnaNeural">Edge: Ana (US Child) ⭐</option>
+                              <option value="en-US-ChristopherNeural">Edge: Christopher (US Male)</option>
+                              <option value="en-US-EricNeural">Edge: Eric (US Male)</option>
+                              <option value="en-US-MichelleNeural">Edge: Michelle (US Female)</option>
+                              <option value="en-GB-SoniaNeural">Edge: Sonia (UK Female)</option>
+                              <option value="en-GB-RyanNeural">Edge: Ryan (UK Male)</option>
+                              <option value="en-GB-LibbyNeural">Edge: Libby (UK Female)</option>
+                              <option value="en-AU-NatashaNeural">Edge: Natasha (AU Female)</option>
+                              <option value="en-AU-WilliamNeural">Edge: William (AU Male)</option>
+                              <option value="en-IN-NeerjaNeural">Edge: Neerja (IN Female)</option>
+                              <option value="en-IN-PrabhatNeural">Edge: Prabhat (IN Male)</option>
+                            </optgroup>
+                            <optgroup label="ElevenLabs (Free Default Voices)">
+                              <option value="eleven|eleven_multilingual_v2|EXAVITQu4vr4xnSDxMaL">ElevenLabs: Bella (Female, Calm) ⭐</option>
+                              <option value="eleven|eleven_multilingual_v2|pNInz6obpgDQGcFmaJgB">ElevenLabs: Adam (Male, Deep)</option>
+                              <option value="eleven|eleven_multilingual_v2|ErXwobaYiN019PkySvjV">ElevenLabs: Antoni (Male, Well-rounded)</option>
+                              <option value="eleven|eleven_multilingual_v2|tx3xeH04ALNcaUpb005">ElevenLabs: Josh (Male, Deep)</option>
+                              <option value="eleven|eleven_multilingual_v2|VR6AewLTigWG4xSOukaG">ElevenLabs: Arnold (Male, Crisp)</option>
+                            </optgroup>
+                          </select>
                           <button
-                            onClick={() => handleBookRate(5)}
-                            className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all"
+                            onClick={() => handlePreviewVoice(selectedVoice)}
+                            className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingVoice
+                              ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                              }`}
                           >
-                            👍 Thumbs Up All
-                          </button>
-                          <button
-                            onClick={() => handleBookRate(1)}
-                            className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-sm transition-all"
-                          >
-                            👎 Thumbs Down
+                            {playingVoice ? 'Stop' : 'Listen'}
                           </button>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Expanded Audio & Video Studio */
-                  <div className="flex-1 flex flex-col min-h-0 space-y-4">
-                    {/* TTS Selection */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">1. Voice</h4>
-                      <div className="flex gap-1.5">
-                        <select
-                          value={selectedVoice}
-                          onChange={(e) => setSelectedVoice(e.target.value)}
-                          className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none"
-                        >
-                          <option value="en-US-AriaNeural">Edge: Aria (US Female)</option>
-                          <option value="en-US-GuyNeural">Edge: Guy (US Male)</option>
-                          <option value="en-US-AnaNeural">Edge: Ana (US Child)</option>
-                          <option value="en-IN-NeerjaNeural">Edge: Neerja (IN Female)</option>
-                          <option value="en-GB-SoniaNeural">Edge: Sonia (UK Female)</option>
-                          <option value="gtts">Google TTS (Standard)</option>
-                          <option value="eleven_21m00Tcm4TlvDq8ikWAM">ElevenLabs: Rachel</option>
-                        </select>
-                        <button
-                          onClick={() => handlePreviewVoice(selectedVoice)}
-                          className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingVoice
-                            ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                            }`}
-                        >
-                          {playingVoice ? 'Stop' : 'Listen'}
-                        </button>
-                      </div>
+                        <div className="flex items-center gap-3 mt-2 animate-fadeIn">
+                          <select
+                            value={voiceSpeed}
+                            onChange={(e) => setVoiceSpeed(e.target.value)}
+                            className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-[10px] font-medium text-slate-700 shadow-sm focus:outline-none"
+                          >
+                            <option value="slow">Speed: Slow</option>
+                            <option value="normal">Speed: Normal</option>
+                            <option value="fast">Speed: Fast</option>
+                          </select>
+                          <label className="flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-slate-600 bg-white p-1.5 px-2 rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={dramaticPacing}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setDramaticPacing(checked);
+                                if (checked && tempVoiceText) {
+                                  const newText = tempVoiceText.split('\n').map(line => {
+                                    if (line.trim() && !line.trim().endsWith('...')) {
+                                      return line.trimEnd() + '...';
+                                    }
+                                    return line;
+                                  }).join('\n');
+                                  setTempVoiceText(newText);
+                                }
+                              }}
+                              className="w-3 h-3 text-indigo-600 focus:ring-indigo-500 rounded border-slate-300"
+                            />
+                            Dramatic Pauses
+                          </label>
+                        </div>
 
-                      {/* Voice-Over Script TextArea */}
-                      <div className="mt-3 pt-3 border-t border-slate-200">
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-[10px] uppercase font-bold text-slate-400">Voice-Over Script</label>
+                        {/* Voice-Over Script TextArea */}
+                        <div className="mt-3 pt-3 border-t border-slate-200">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[10px] uppercase font-bold text-slate-400">Voice-Over Script</label>
+                            <div className={`grid gap-1.5 ${isTuningScript ? 'grid-cols-2 w-[260px]' : 'grid-cols-1 w-[160px]'}`}>
+                              <button
+                                onClick={handleTuneScript}
+                                disabled={isTuningScript || (!tempVoiceText && !tempStoryText)}
+                                className="flex items-center justify-center gap-1.5 px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded text-[10px] font-bold shadow-sm transition-all disabled:opacity-50"
+                              >
+                                {isTuningScript ? (
+                                  <span className="truncate flex items-center gap-1">
+                                    <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                                    Tuning ({TEXT_MODEL_LABELS[habitTextModel] || 'Ollama'})
+                                  </span>
+                                ) : (
+                                  <span className="truncate">✨ Auto-Tune ({TEXT_MODEL_LABELS[habitTextModel] || 'Ollama'})</span>
+                                )}
+                              </button>
+                              {isTuningScript && (
+                                <button
+                                  onClick={handleAbortTuning}
+                                  className="flex items-center justify-center gap-1 px-2 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded text-[10px] font-bold shadow-sm transition-all"
+                                  title="Stop Tuning"
+                                >
+                                  ✕ Stop
+                                </button>
+                              )}
+                            </div>
+                          </div>
                           {tempVoiceText !== (activeVoiceTexts[activePageKey] ?? activeStories[activePageKey] ?? '') && (
-                            <div className="flex items-center gap-1.5 animate-fadeIn">
+                            <div className="flex items-center gap-1.5 animate-fadeIn mt-1 mb-2">
                               <button
                                 onClick={handleSaveVoiceTextEdit}
                                 className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold transition-all border border-emerald-200"
@@ -2215,142 +2460,161 @@ export default function App() {
                               <button
                                 onClick={handleCancelVoiceTextEdit}
                                 className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold transition-all border border-rose-200"
-                                title="Cancel edits"
+                                title="Reset edits"
                               >
-                                ✕ Cancel
+                                ✕ Reset
                               </button>
                             </div>
                           )}
-                        </div>
-                        <textarea
-                          value={tempVoiceText}
-                          onChange={(e) => setTempVoiceText(e.target.value)}
-                          rows={3}
-                          className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none font-medium text-slate-700"
-                          placeholder="Type specific voice-over script here. This won't affect the visual text on the page."
-                        />
-                        <p className="text-[9px] text-slate-400 mt-1 italic">Overrides the visual page story just for audio generation.</p>
-                      </div>
-                    </div>
-
-                    {/* BGM Selection */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Page-level Background Music</h4>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={pageBgmEnabled}
-                            onChange={(e) => setPageBgmEnabled(e.target.checked)}
-                            className="sr-only peer"
+                          <textarea
+                            value={tempVoiceText}
+                            onChange={(e) => {
+                              setTempVoiceText(e.target.value);
+                            }}
+                            rows={3}
+                            className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none font-medium text-slate-700"
+                            placeholder="Type specific voice-over script here. This won't affect the visual text on the page."
                           />
-                          <div className="w-7 h-4 bg-rose-500 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
-                        </label>
+                          <p className="text-[9px] text-slate-400 mt-1 italic">Overrides the visual page story just for audio generation.</p>
+                        </div>
                       </div>
-                      {pageBgmEnabled && (
-                        <>
-                          <div className="flex gap-1.5">
-                            <select
-                              value={selectedBgm}
-                              onChange={(e) => setSelectedBgm(e.target.value)}
-                              className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none"
-                            >
-                              <option value="calm_piano">Bedtime Lullaby (Piano)</option>
-                              <option value="happy_ukulele">Preschool Joy (Ukulele)</option>
-                              <option value="magical_fairytale">Adventure (Fairytale)</option>
-                              <option value="playful_toyland">Whimsical (Toyland)</option>
-                              <option value="ai_musicgen">AI Generated Music</option>
-                            </select>
-                            {selectedBgm !== 'ai_musicgen' && (
-                              <button
-                                onClick={() => handlePreviewBgm(selectedBgm)}
-                                className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingBgm === selectedBgm
-                                  ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
-                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                  }`}
+
+                      {/* BGM Selection */}
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Page-level Background Music</h4>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={pageBgmEnabled}
+                              onChange={(e) => setPageBgmEnabled(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-7 h-4 bg-rose-500 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                          </label>
+                        </div>
+                        {pageBgmEnabled && (
+                          <>
+                            <div className="flex gap-1.5">
+                              <select
+                                value={selectedBgm}
+                                onChange={(e) => setSelectedBgm(e.target.value)}
+                                className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none"
                               >
-                                {playingBgm === selectedBgm ? 'Stop' : 'Listen'}
-                              </button>
-                            )}
-                          </div>
-                          {selectedBgm === 'ai_musicgen' && (
-                            <div className="mt-1.5">
-                              <textarea
-                                value={customBgmPrompt}
-                                onChange={(e) => setCustomBgmPrompt(e.target.value)}
-                                className="w-full p-2 bg-white border border-slate-200 rounded-lg text-[10px] focus:ring-1 focus:ring-indigo-500 focus:outline-none h-12 resize-none"
-                                placeholder="e.g. calm soft acoustic guitar loop"
-                              />
+
+                                <optgroup label="SoundHelix">
+                                  <option value="electronic_melody">SoundHelix: Electronic Melody</option>
+                                  <option value="upbeat_synth">SoundHelix: Upbeat Synth</option>
+                                  <option value="rhythmic_groove">SoundHelix: Rhythmic Groove</option>
+                                  <option value="playful_beats">SoundHelix: Playful Beats</option>
+                                  <option value="ambient_chords">SoundHelix: Ambient Chords</option>
+                                  <option value="retro_arp">SoundHelix: Retro Arp</option>
+                                  <option value="dance_pop">SoundHelix: Dance Pop</option>
+                                  <option value="smooth_techno">SoundHelix: Smooth Techno</option>
+                                  <option value="driving_rhythm">SoundHelix: Driving Rhythm</option>
+                                  <option value="soft_trance">SoundHelix: Soft Trance</option>
+                                  <option value="bright_synth">SoundHelix: Bright Synth</option>
+                                  <option value="mellow_beats">SoundHelix: Mellow Beats</option>
+                                  <option value="energetic_mix">SoundHelix: Energetic Mix</option>
+                                  <option value="deep_groove">SoundHelix: Deep Groove</option>
+                                  <option value="light_electronica">SoundHelix: Light Electronica</option>
+                                  <option value="dynamic_trance">SoundHelix: Dynamic Trance</option>
+                                  <option value="cosmic_ambient">SoundHelix: Cosmic Ambient</option>
+                                </optgroup>
+                                <optgroup label="AI Generation">
+                                  <option value="ai_musicgen" label="AI Generated Music">AI: Generated Music</option>
+                                </optgroup>
+                              </select>
+                              {selectedBgm !== 'ai_musicgen' && (
+                                <button
+                                  onClick={() => handlePreviewBgm(selectedBgm)}
+                                  className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingBgm === selectedBgm
+                                    ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                    }`}
+                                >
+                                  {playingBgm === selectedBgm ? 'Stop' : 'Listen'}
+                                </button>
+                              )}
                             </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Actions & Player */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex-1 flex flex-col min-h-0 justify-between">
-                      <div>
-                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">3. Video Generation</h4>
-                        <button
-                          onClick={() => handleGenerateVideo()}
-                          disabled={isCompilingVideo || !activeGeneratedImages[activePageKey]}
-                          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all mb-2
-                            ${(isCompilingVideo || !activeGeneratedImages[activePageKey])
-                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                              : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'}`}
-                        >
-                          {isCompilingVideo ? (
-                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Compiling...</>
-                          ) : (
-                            <><Sparkles className="w-3.5 h-3.5" /> Compile Narrated Video</>
-                          )}
-                        </button>
-
-                        {fullBookVideoUrl && (
-                          <div className="mb-2 p-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-center">
-                            <span className="text-[9px] uppercase font-bold text-indigo-700 tracking-wider flex items-center justify-center gap-1 animate-pulse">
-                              🎬 Full Movie Ready in Canvas!
-                            </span>
-                          </div>
+                            {selectedBgm === 'ai_musicgen' && (
+                              <div className="mt-1.5">
+                                <textarea
+                                  value={customBgmPrompt}
+                                  onChange={(e) => setCustomBgmPrompt(e.target.value)}
+                                  className="w-full p-2 bg-white border border-slate-200 rounded-lg text-[10px] focus:ring-1 focus:ring-indigo-500 focus:outline-none h-12 resize-none"
+                                  placeholder="e.g. calm soft acoustic guitar loop"
+                                />
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
 
-                      {/* HTML5 Video Player */}
-                      {generatedVideos[activePageKey] ? (
-                        <div className="space-y-2 flex-1 flex flex-col justify-end min-h-0 mt-2">
-                          <div className="rounded-lg overflow-hidden border border-slate-200 bg-black flex-1 flex items-center justify-center relative min-h-[140px]">
-                            <video
-                              key={`${activePageKey}-${videoCacheBuster[activePageKey] || 0}`}
-                              src={`${generatedVideos[activePageKey]}?t=${videoCacheBuster[activePageKey] || 0}`}
-                              controls
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <a
-                            href={generatedVideos[activePageKey]}
-                            download={`${isBook ? 'Book' : habitTitle}_${activePageKey}.mp4`}
-                            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-bold text-[10px] bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all text-center"
+                      {/* Actions & Player */}
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex-1 flex flex-col min-h-0 justify-between">
+                        <div>
+                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">3. Video Generation</h4>
+                          <button
+                            onClick={() => handleGenerateVideo()}
+                            disabled={isCompilingVideo || !activeGeneratedImages[activePageKey]}
+                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs transition-all mb-2
+                            ${(isCompilingVideo || !activeGeneratedImages[activePageKey])
+                                ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'}`}
                           >
-                            <Download className="w-3 h-3" /> Download MP4 Video
-                          </a>
+                            {isCompilingVideo ? (
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Compiling...</>
+                            ) : (
+                              <><Sparkles className="w-3.5 h-3.5" /> Compile Narrated Video</>
+                            )}
+                          </button>
+
+                          {fullBookVideoUrl && (
+                            <div className="mb-2 p-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-center">
+                              <span className="text-[9px] uppercase font-bold text-indigo-700 tracking-wider flex items-center justify-center gap-1 animate-pulse">
+                                🎬 Full Movie Ready in Canvas!
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-200 rounded-lg bg-white min-h-[140px] mt-2">
-                          <BookOpen className="w-6 h-6 text-slate-300 mb-1" />
-                          <p className="text-[10px] text-slate-400 font-semibold">No video compiled yet</p>
-                        </div>
-                      )}
+
+                        {/* HTML5 Video Player */}
+                        {generatedVideos[activePageKey] ? (
+                          <div className="space-y-2 flex-1 flex flex-col justify-end min-h-0 mt-2">
+                            <div className="rounded-lg overflow-hidden border border-slate-200 bg-black flex-1 flex items-center justify-center relative min-h-[140px]">
+                              <video
+                                key={`${activePageKey}-${videoCacheBuster[activePageKey] || 0}`}
+                                src={`${generatedVideos[activePageKey]}?t=${videoCacheBuster[activePageKey] || 0}`}
+                                controls
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                            <a
+                              href={generatedVideos[activePageKey]}
+                              download={`${isBook ? 'Book' : habitTitle}_${activePageKey}.mp4`}
+                              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-bold text-[10px] bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all text-center"
+                            >
+                              <Download className="w-3 h-3" /> Download MP4 Video
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-200 rounded-lg bg-white min-h-[140px] mt-2">
+                            <BookOpen className="w-6 h-6 text-slate-300 mb-1" />
+                            <p className="text-[10px] text-slate-400 font-semibold">No video compiled yet</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+
             </div>
-
           </div>
-        </div>
 
+        </div>
       </div>
-    </div>
 
       <AgentReviewPanel
         isOpen={reviewPanelOpen}
@@ -2375,7 +2639,7 @@ export default function App() {
               </div>
               <h3 className="text-base font-bold text-slate-900">ChromaDB Match Found!</h3>
             </div>
-            
+
             <p className="text-xs text-slate-650 leading-relaxed mb-4">
               We found a similar previously generated project in the vector database:
               <strong className="block mt-1 text-slate-800 font-bold">"{matchingProjectFound.topic}"</strong>
@@ -2442,47 +2706,64 @@ export default function App() {
             </p>
             <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-5">
               <span className="block text-[10px] uppercase font-bold text-slate-400 mb-2">Choose Background Music Track:</span>
-              <div className="flex flex-col gap-2">
-                {[
-                  { key: 'calm_piano', label: 'Bedtime Lullaby (Piano)' },
-                  { key: 'happy_ukulele', label: 'Preschool Joy (Ukulele)' },
-                  { key: 'magical_fairytale', label: 'Adventure (Fairytale)' },
-                  { key: 'playful_toyland', label: 'Whimsical (Toyland)' }
-                ].map((track) => (
-                  <div key={track.key} className="flex items-center justify-between p-2 bg-white border border-slate-100 rounded-lg shadow-sm">
-                    <label className="flex items-center gap-2 cursor-pointer flex-1">
-                      <input
-                        type="radio"
-                        name="movieBgm"
-                        value={track.key}
-                        checked={movieBgm === track.key}
-                        onChange={() => setMovieBgm(track.key)}
-                        className="text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <span className="text-xs font-semibold text-slate-700">{track.label}</span>
-                    </label>
-                    <button
-                      onClick={() => handlePreviewBgm(track.key)}
-                      className={`px-3 py-1 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingBgm === track.key ? 'bg-rose-500 border-rose-500 text-white animate-pulse' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'}`}
-                    >
-                      {playingBgm === track.key ? 'Stop' : 'Listen'}
-                    </button>
-                  </div>
-                ))}
+              <div className="flex gap-1.5 animate-fadeIn">
+                <select
+                  value={movieBgm}
+                  onChange={(e) => setMovieBgm(e.target.value)}
+                  className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none"
+                >
+
+                  <optgroup label="SoundHelix">
+                    <option value="electronic_melody">SoundHelix: Electronic Melody</option>
+                    <option value="upbeat_synth">SoundHelix: Upbeat Synth</option>
+                    <option value="rhythmic_groove">SoundHelix: Rhythmic Groove</option>
+                    <option value="playful_beats">SoundHelix: Playful Beats</option>
+                    <option value="ambient_chords">SoundHelix: Ambient Chords</option>
+                    <option value="retro_arp">SoundHelix: Retro Arp</option>
+                    <option value="dance_pop">SoundHelix: Dance Pop</option>
+                    <option value="smooth_techno">SoundHelix: Smooth Techno</option>
+                    <option value="driving_rhythm">SoundHelix: Driving Rhythm</option>
+                    <option value="soft_trance">SoundHelix: Soft Trance</option>
+                    <option value="bright_synth">SoundHelix: Bright Synth</option>
+                    <option value="mellow_beats">SoundHelix: Mellow Beats</option>
+                    <option value="energetic_mix">SoundHelix: Energetic Mix</option>
+                    <option value="deep_groove">SoundHelix: Deep Groove</option>
+                    <option value="light_electronica">SoundHelix: Light Electronica</option>
+                    <option value="dynamic_trance">SoundHelix: Dynamic Trance</option>
+                    <option value="cosmic_ambient">SoundHelix: Cosmic Ambient</option>
+                  </optgroup>
+                </select>
+                <button
+                  onClick={() => handlePreviewBgm(movieBgm)}
+                  className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] transition-all shadow-sm ${playingBgm === movieBgm
+                    ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                >
+                  {playingBgm === movieBgm ? 'Stop' : 'Listen'}
+                </button>
               </div>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mt-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleCompileFullMovie(movieBgm, false)}
+                  className="py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-xl shadow-md transition-all"
+                >
+                  🎬 Compile Missing Pages
+                </button>
+                <button
+                  onClick={() => handleCompileFullMovie(movieBgm, true)}
+                  className="py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold rounded-xl shadow-md transition-all"
+                >
+                  🔄 Recreate All Pages
+                </button>
+              </div>
               <button
-                onClick={() => handleCompileFullMovie(movieBgm)}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all"
+                onClick={() => handleCompileFullMovie('none', false)}
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-xl transition-all"
               >
-                🎬 Compile with Selected Music
-              </button>
-              <button
-                onClick={() => handleCompileFullMovie('none')}
-                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
-              >
-                🔇 Compile without Music
+                🔇 Compile Missing (No Music)
               </button>
               <button
                 onClick={() => setMovieBgmModalOpen(false)}
@@ -2497,3 +2778,4 @@ export default function App() {
     </>
   );
 }
+

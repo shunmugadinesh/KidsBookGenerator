@@ -1,13 +1,17 @@
+import os
+# Disable CrewAI/OpenTelemetry telemetry to prevent DNS/connection errors
+os.environ["OTEL_SDK_DISABLED"] = "true"
+os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
+
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 import json
-import os
 import logging
 
 from app.models.schemas import (
     ImageGenerationRequest, BookPromptRequest, HabitChartRequest,
-    AudioVideoRequest, FullMovieRequest,
+    AudioVideoRequest, FullMovieRequest, TuneScriptRequest,
     # Phase 3
     SimilaritySearchRequest, SaveAgentOutputRequest, ReviewUpdateRequest, FeedbackRequest,
     CorePlanRequest, StoryPagesRequest, SaveProjectAssetsRequest,
@@ -465,7 +469,9 @@ async def generate_audio_video_endpoint(request: AudioVideoRequest, db: Session 
             hf_token=hf_token,
             elevenlabs_api_key=eleven_key,
             page_key=request.page_key,
-            project_id_name=project_id_name
+            project_id_name=project_id_name,
+            voice_speed=request.voice_speed,
+            dramatic_pacing=request.dramatic_pacing
         )
         
         filename = os.path.basename(video_path)
@@ -482,20 +488,21 @@ async def generate_audio_video_endpoint(request: AudioVideoRequest, db: Session 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/preview-voice")
-def preview_voice_endpoint(voice: str, text: str = None):
+def preview_voice_endpoint(voice: str, text: str = None, speed: str = "normal", dramatic_pacing: bool = False):
     try:
         import hashlib
         os.makedirs("app/resources/generated", exist_ok=True)
         
         sample_text = text if text and text.strip() else "Hi! I am your AI narrator. I am ready to bring your story to life!"
-        text_hash = hashlib.md5(sample_text.encode('utf-8')).hexdigest()
+        hash_input = f"{sample_text}_{speed}_{dramatic_pacing}"
+        text_hash = hashlib.md5(hash_input.encode('utf-8')).hexdigest()
         preview_filename = f"preview_{voice}_{text_hash}.mp3"
         preview_path = f"app/resources/generated/{preview_filename}"
         
         if not os.path.exists(preview_path):
             eleven_key = os.getenv("ELEVENLABS_API_KEY")
             from app.utils.audio_video import generate_tts
-            generate_tts(sample_text, voice, preview_path, eleven_key)
+            generate_tts(sample_text, voice, preview_path, eleven_key, speed=speed, dramatic_pacing=dramatic_pacing)
             
         return {
             "status": "success",
@@ -503,6 +510,79 @@ def preview_voice_endpoint(voice: str, text: str = None):
         }
     except Exception as e:
         print(f"VOICE PREVIEW ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/tune-script")
+def tune_script_endpoint(request: TuneScriptRequest):
+    try:
+        from app.crew_ai.agents import TTSAgents
+        from app.crew_ai.tasks import TTSTasks
+        from crewai import Crew
+
+        agents = TTSAgents(text_model=request.text_model)
+        tasks = TTSTasks()
+
+        tuning_agent = agents.tts_tuning_agent()
+        tuning_task = tasks.tune_script_task(
+            agent=tuning_agent,
+            original_text=request.text,
+            book_title=request.book_title,
+            book_type=request.book_type,
+            overall_context=request.overall_context,
+        )
+
+        # Helper to validate punctuation requirements
+        def _valid_punct(text: str) -> bool:
+            found = set()
+            if "..." in text:
+                found.add("...")
+            for p in [",", ".", "?", "!", "—", '"']:
+                if p in text:
+                    found.add(p)
+            return len(found) >= 3 and "..." in found
+
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            crew = Crew(
+                agents=[tuning_agent],
+                tasks=[tuning_task],
+                verbose=True,
+            )
+            result = crew.kickoff()
+            clean_text = (
+                str(result)
+                .replace("```json", "")
+                .replace("```text", "")
+                .replace("```", "")
+                .strip()
+            )
+            if _valid_punct(clean_text):
+                return {"status": "success", "tuned_text": clean_text}
+            if attempt == max_attempts:
+                return {
+                    "status": "partial_success",
+                    "tuned_text": clean_text,
+                    "warning": "Failed to meet punctuation requirements after 3 attempts",
+                }
+            # otherwise retry automatically
+    except Exception as e:
+        print(f"TTS TUNING ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/preview-bgm")
+def preview_bgm_endpoint(bgm: str):
+    try:
+        from fastapi.responses import FileResponse
+        from app.utils.audio_video import ensure_bgm_preset
+        import os
+        
+        bgm_path = ensure_bgm_preset(bgm)
+        if bgm_path and os.path.exists(bgm_path):
+            return FileResponse(bgm_path, media_type="audio/mpeg")
+        else:
+            raise HTTPException(status_code=404, detail="BGM track not found or failed to download")
+    except Exception as e:
+        print(f"BGM PREVIEW ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/book-data")

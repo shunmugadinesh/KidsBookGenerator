@@ -501,3 +501,42 @@ class AlphabetTasks:
             expected_output="A JSON object with exactly 2 keys: scene, fact."
         )
 
+class TTSTasks:
+    def tune_script_task(self, agent, original_text: str, book_title: str, book_type: str, overall_context: str):
+        return Task(
+            description=f"""You are given a short text snippet from a children's book.
+            Your job is to rewrite this exact text snippet by strategically inserting Edge TTS punctuation marks
+            (..., ,, ., ?, !, —, " ") to enhance the voice delivery, pacing, and mood.
+
+            === REFERENCE VOICE-OVER SAMPLE ===
+            Original text: 
+                Once upon a time there was a tiny brave mouse named Pip Pip looked up at the giant cheese wheel and wondered can I reach it. Pip froze his little heart beating fast Don't move a muscle Pip whispered to himself he can't see you But the cat stepped closer closer closer until Whoosh Pip dashed away
+            
+            Tuned output:
+                Once upon a time, there was a tiny, brave mouse named Pip.
+                Pip looked up at the giant cheese wheel and wondered... "Can I reach it?"
+                Pip froze... his little heart beating fast. 
+                "Don't move a muscle," Pip whispered to himself, "he can't see you."
+                But the cat stepped closer, closer, closer... until... 
+                Whoosh! Pip dashed away!
+
+            === BOOK CONTEXT ===
+            Title: {book_title}
+            Type: {book_type}
+            Overall Theme/Context: {overall_context}
+
+            === TEXT TO TUNE ===
+            {original_text}
+
+            Rules:
+            - You MUST NOT add, remove, or change any of the actual words.            
+            - You MUST insert AT LEAST THREE DIFFERENT punctuation marks from the set (..., ,, ., ?, !, —, " ") to bring the text to life.
+            - You MUST insert AT LEAST ONE dramatic pause (`...`) somewhere in the middle or end of the text to force a pause.
+            - Use punctuation to improve pauses, dialogue, suspense, excitement, curiosity, and rhythm.            
+            - If the text contains little or no punctuation, actively improve it rather than returning it unchanged.
+            - DO NOT return the text exactly as it was provided! You must insert punctuation.
+            - Output ONLY the tuned text. No conversational filler, no markdown formatting (unless it's the text itself), no introduction. Just the tuned text string.
+            """,
+            agent=agent,
+            expected_output="The tuned text string containing precise TTS punctuation, with no other text."
+        )

@@ -48,3 +48,4 @@ docs/implementation_plan.md
 docs/task.md
 docs/walkthrough.md
 scripts/migrate_media.py
+test_tune.py

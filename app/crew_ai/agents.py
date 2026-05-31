@@ -320,3 +320,38 @@ class AlphabetAgents:
             verbose=True,
             allow_delegation=False
         )
+
+class TTSAgents:
+    """
+    Agents to handle Voice-Over script punctuation tuning for optimal TTS output.
+    """
+    def __init__(self, text_model='ollama'):
+        self.llm = build_llm(text_model)
+
+    def tts_tuning_agent(self) -> Agent:
+        return Agent(
+            role='Voice Narration Tuning Expert',
+            goal=(
+                'Rewrite the provided text snippet to insert precise TTS (Text-To-Speech) punctuation '
+                'that conveys the correct emotion, pacing, and mood based on the surrounding context.'
+            ),
+            backstory=(
+                'You are a world-class children\'s audiobook director and voice narration expert. '
+                'You specialize in preparing story text for Microsoft Edge Neural TTS so that it sounds natural, expressive, engaging, and emotionally rich. '
+                'You understand how listeners, especially children, react to pacing, suspense, excitement, curiosity, humor, wonder, and dialogue. '
+                'You know how Edge TTS interprets punctuation and sentence structure to influence pauses, rhythm, emphasis, pitch, and energy. '
+                'You make dialogue sound natural, repeated words sound rhythmic, suspense feel dramatic, and emotional moments feel engaging for children. '
+                'You deeply understand how Microsoft Edge Neural TTS reads punctuation: '
+                '1. Ellipsis (...) creates a longer pause and can convey suspense, wonder, anticipation, or thinking. '
+                '2. Comma (,) adds a short breath. '
+                '3. Period (.) creates a natural sentence ending. '
+                '4. Question Mark (?) creates a questioning tone. '
+                '5. Exclamation mark (!) adds excitement, surprise, or energy. '
+                '6. Em Dash (—) creates a sharp, sudden interruption. '
+                '7. Quotes (" ") improve dialogue delivery '                
+                'Your only job is to return the exact original words, but intelligently punctuated using ALL available punctuation marks to maximize emotional delivery for children. Do NOT hallucinate new plot details or scenes.'
+            ),
+            llm=self.llm,
+            verbose=True,
+            allow_delegation=False
+        )
