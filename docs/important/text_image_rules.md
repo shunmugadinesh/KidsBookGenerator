@@ -142,16 +142,19 @@ VERY important.
 
 ## Common styles
 
-| Style         | Example        |
-| ------------- | -------------- |
-| Pixar         | animated 3D    |
-| Disney        | fantasy        |
-| Anime         | Japanese       |
-| Realistic     | photo          |
-| Watercolor    | painting       |
-| Cyberpunk     | neon sci-fi    |
-| Storybook     | children books |
-| Studio Ghibli | soft fantasy   |
+
+|Style|Aesthetic / Art Type|Recommended Modifiers|
+|---|---|---|
+|Pixar|Animated 3D character|Pixar-style 3D illustration, soft studio lighting, subsurface skin scattering, big expressive sparkly eyes|
+|Disney|Classic fantasy|Disney-style illustration, whimsical fantasy atmosphere, soft magical lighting|
+|Anime|Japanese animation|Cyberpunk anime style, Makoto Shinkai style, dramatic neon lighting, dynamic pose|
+|Realistic|Cinematic photo|Cinematic photography, soft natural lighting, shallow depth of field, realistic skin tones, 8k|
+|Watercolor|Soft hand-painted|Watercolor painting style, soft color washes, paper texture, delicate hand-drawn lines|
+|Cyberpunk|Neon sci-fi|Cyberpunk style, glowing neon lights, futuristic city environment, high contrast|
+|Storybook|Traditional children's book|Children's book illustration, storybook art style, soft pastel colors, friendly warm atmosphere|
+|Studio Ghibli|Soft organic fantasy|Studio Ghibli style, hand-drawn anime illustration, lush painted backgrounds, natural soft lighting|
+
+
 
 Example:
 

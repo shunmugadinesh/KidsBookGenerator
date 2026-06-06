@@ -28,6 +28,7 @@ temp/
 static/
 app/resources/voice
 app/resources/generated
+app/resources/bgm
 book_output
 App_bkp.jsx
 *bkp.jsx
