@@ -1,4 +1,7 @@
-from app.resources.data import LETTERS_DATA
+from app.resources.data import LETTERS_DATA, NUMBERS_DATA
+
+def _get_base_character_desc(name, age, gender, skin_tone, hair_color, hair_style, eye_color, outfit_color):
+    return f"{name}, a {age}-year-old {gender} with {skin_tone} skin, {hair_color} {hair_style} hair, {eye_color} eyes, chubby cute cheeks, cheerful joyful expression, wearing a {outfit_color} outfit with small playful patterns, fully clothed."
 
 def generate_prompt(
     name: str,
@@ -11,27 +14,82 @@ def generate_prompt(
     eye_color: str,
     outfit_color: str,
     letter: str,
+    style: str = "Pixar-style illustration",
+    lighting: str = "soft lighting",
+    custom_word: str = None,
+    custom_scene: str = None,
 ):
     letter_data = next(
         (item for item in LETTERS_DATA if item["l"] == letter.upper()), None
     )
-    if not letter_data:
+    if not letter_data and not (custom_word and custom_scene):
         return f"Letter {letter} not found."
 
-    word = letter_data["word"]
-    scene = letter_data["scene"]
+    word = custom_word if custom_word else letter_data["word"]
+    scene = custom_scene if custom_scene else letter_data["scene"]
+    
+    char_desc = _get_base_character_desc(name, age, gender, skin_tone, hair_color, hair_style, eye_color, outfit_color)
 
-    prompt = f"""{name}, a {age}-year-old {gender} with {skin_tone} skin, {hair_color} {hair_style} hair, {eye_color} eyes, chubby cute cheeks, cheerful joyful expression, wearing a {outfit_color} outfit with small playful patterns.
+    prompt = f"""{char_desc}
 
-Rendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.
+Rendered as an ultra-realistic 3D cartoon character. 
+STYLE: {style}. 
+LIGHTING: {lighting}.
 
 {scene}.
 
-Letter "{letter.upper()}" for {word}. Centered full-body or 3/4 body composition, clean soft pastel background with subtle {word.lower()}-themed color wash, single large glowing letter "{letter.upper()}" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.
+Letter "{letter.upper()}" for {word}. Centered full-body or 3/4 body composition, clean soft pastel background with subtle {word.lower()}-themed color wash, single large glowing letter "{letter.upper()}" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, no clutter, no other characters, portrait orientation, A5 page size.
 
-The word "{word}" should appear as the label text below the scene in {language} script — large, bold, rounded, child-friendly font style.
+The word "{word}" should appear as beautifully integrated 3D or stylized overlay text over the image at the bottom in {language} script — large, bold, rounded, child-friendly font style seamlessly blended into the scene.
 
-NEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted"""
+NEGATIVE_PROMPT: blurry, deformed, extra fingers, bad anatomy, dark, scary, adult content, nudity, watermark, logo, split screen, white border, framed
+
+GUIDELINES: Keep everything wholesome and toddler-safe. Each page must introduce a new unique prop or environment detail. Vibrant, joyful colours. HD printable quality."""
+
+    return prompt
+
+def generate_number_prompt(
+    name: str,
+    age: int,
+    language: str,
+    gender: str,
+    skin_tone: str,
+    hair_color: str,
+    hair_style: str,
+    eye_color: str,
+    outfit_color: str,
+    number: str,
+    style: str = "Pixar-style illustration",
+    lighting: str = "soft lighting",
+    custom_word: str = None,
+    custom_scene: str = None,
+):
+    number_data = next(
+        (item for item in NUMBERS_DATA if item["l"] == str(number)), None
+    )
+    if not number_data and not (custom_word and custom_scene):
+        return f"Number {number} not found."
+
+    word = custom_word if custom_word else number_data["word"]
+    scene = custom_scene if custom_scene else number_data["scene"]
+    
+    char_desc = _get_base_character_desc(name, age, gender, skin_tone, hair_color, hair_style, eye_color, outfit_color)
+
+    prompt = f"""{char_desc}
+
+Rendered as an ultra-realistic 3D cartoon character. 
+STYLE: {style}. 
+LIGHTING: {lighting}.
+
+{scene}.
+
+Number "{number}" for {word}. Centered full-body or 3/4 body composition, clean soft pastel background with subtle {word.lower()}-themed color wash, single large glowing number "{number}" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, no clutter, no other characters, portrait orientation, A5 page size.
+
+The word "{word}" should appear as beautifully integrated 3D or stylized overlay text over the image at the bottom in {language} script — large, bold, rounded, child-friendly font style seamlessly blended into the scene.
+
+NEGATIVE_PROMPT: blurry, deformed, extra fingers, bad anatomy, dark, scary, adult content, nudity, watermark, logo, split screen
+
+GUIDELINES: Keep everything wholesome and toddler-safe. Each page must introduce a new unique prop or environment detail. Vibrant, joyful colours. HD printable quality."""
 
     return prompt
 

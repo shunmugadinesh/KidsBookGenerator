@@ -22,6 +22,8 @@ class ImageGenerationRequest(BaseModel):
 class BookPromptRequest(BaseModel):
     profile: ChildProfile
     letter: Optional[str] = None
+    custom_word: Optional[str] = None
+    custom_scene: Optional[str] = None
 
 class HabitChartRequest(BaseModel):
     title: str

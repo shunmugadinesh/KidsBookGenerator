@@ -20,7 +20,7 @@ from app.models.schemas import (
     ChildProfile
 )
 from app.utils.image_generator import generate_image
-from app.modules.book import get_letters_prompts
+from app.modules.book import get_letters_prompts, get_numbers_prompts
 from app.modules.habit import HabitChartOrchestrator
 from app.modules.rhyme import RhymeOrchestrator      # Phase 4
 from app.modules.story import StoryOrchestrator      # Phase 4
@@ -77,11 +77,22 @@ async def generate_image_endpoint(request: ImageGenerationRequest):
 @app.post("/generate-prompts")
 def generate_prompts_endpoint(request: BookPromptRequest):
     """
-    If 'letter' is specified in the request body, returns the prompt for that letter.
-    Otherwise, returns prompts for all letters.
+    If 'letter' is specified in the request body, returns the prompt for that letter or number.
+    Otherwise, returns prompts for all letters and numbers.
     """
-    prompts_data = get_letters_prompts(request.profile, request.letter)
-    return {"prompts": prompts_data}
+    prompts_data = {}
+    number_prompts_data = {}
+    
+    if request.letter:
+        if request.letter.isdigit():
+            number_prompts_data = {request.letter: get_numbers_prompts(request.profile, request.letter, request.custom_word, request.custom_scene)}
+        else:
+            prompts_data = {request.letter: get_letters_prompts(request.profile, request.letter, request.custom_word, request.custom_scene)}
+    else:
+        prompts_data = get_letters_prompts(request.profile)
+        number_prompts_data = get_numbers_prompts(request.profile)
+        
+    return {"prompts": prompts_data, "number_prompts": number_prompts_data}
 
 @app.get("/rhyme-presets")
 def rhyme_presets_endpoint():

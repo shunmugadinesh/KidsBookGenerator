@@ -4,6 +4,28 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import AgentReviewPanel from './components/AgentReviewPanel';
 
+// const ART_STYLES = [
+//   { name: 'Pixar', type: 'Animated 3D character', modifiers: 'Pixar-style 3D illustration, soft studio lighting, subsurface skin scattering, big expressive sparkly eyes' },
+//   { name: 'Disney', type: 'Classic fantasy', modifiers: 'Disney-style illustration, whimsical fantasy atmosphere, soft magical lighting' },
+//   { name: 'Anime', type: 'Japanese animation', modifiers: 'Cyberpunk anime style, Makoto Shinkai style, dramatic neon lighting, dynamic pose' },
+//   { name: 'Realistic', type: 'Cinematic photo', modifiers: 'Cinematic photography, soft natural lighting, shallow depth of field, realistic skin tones, 8k' },
+//   { name: 'Watercolor', type: 'Soft hand-painted', modifiers: 'Watercolor painting style, soft color washes, paper texture, delicate hand-drawn lines' },
+//   { name: 'Cyberpunk', type: 'Neon sci-fi', modifiers: 'Cyberpunk style, glowing neon lights, futuristic city environment, high contrast' },
+//   { name: 'Storybook', type: "Traditional children's book", modifiers: "Children's book illustration, storybook art style, soft pastel colors, friendly warm atmosphere" },
+//   { name: 'Studio Ghibli', type: 'Soft organic fantasy', modifiers: 'Studio Ghibli style, hand-drawn anime illustration, lush painted backgrounds, natural soft lighting' }
+// ];
+
+const ART_STYLES = [
+  { name: 'Pixar', type: 'Animated 3D character', modifiers: 'Pixar-style illustration', extra: 'soft studio lighting, subsurface skin scattering, big expressive sparkly eyes' },
+  { name: 'Disney', type: 'Classic fantasy', modifiers: 'Disney-style illustration, whimsical fantasy atmosphere', extra: 'soft magical lighting' },
+  { name: 'Anime', type: 'Japanese animation', modifiers: 'Cyberpunk anime style, Makoto Shinkai style', extra: 'dramatic neon lighting, dynamic pose' },
+  { name: 'Realistic', type: 'Cinematic photo', modifiers: 'Cinematic photography', extra: 'soft natural lighting, shallow depth of field, realistic skin tones, 8k' },
+  { name: 'Watercolor', type: 'Soft hand-painted', modifiers: 'Watercolor painting style', extra: 'soft color washes, paper texture, delicate hand-drawn lines' },
+  { name: 'Cyberpunk', type: 'Neon sci-fi', modifiers: 'Cyberpunk style', extra: 'glowing neon lights, futuristic city environment, high contrast' },
+  { name: 'Storybook', type: "Traditional children's book", modifiers: "Children's book illustration, storybook art style", extra: "soft pastel colors, friendly warm atmosphere" },
+  { name: 'Studio Ghibli', type: 'Soft organic fantasy', modifiers: 'Studio Ghibli style, hand-drawn anime illustration', extra: 'lush painted backgrounds, natural soft lighting' }
+];
+
 // ─── Star Rating component ────────────────────────────────────────────────────
 function StarRating({ value, onChange }) {
   const [hovered, setHovered] = useState(0);
@@ -77,66 +99,54 @@ export default function App() {
 
   // Load letters data from backend single source of truth on mount
   useEffect(() => {
-    const loadLettersData = async () => {
+    const loadBookData = async () => {
       try {
-        const response = await fetch('/book-data');
-        const data = await response.json();
-        if (data && data.letters) {
-          const prompts = {};
+        // Prepare profile payload
+        const profile = { style: 'Pixar-style illustration', lighting: 'soft studio lighting' };
+
+        // Fetch data for stories/facts
+        const [bookRes, numRes, promptsRes] = await Promise.all([
+          fetch('/book-data'),
+          fetch('/numbers-data'),
+          fetch('/generate-prompts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile })
+          })
+        ]);
+
+        const bookData = await bookRes.json();
+        const numData = await numRes.json();
+        const promptsData = await promptsRes.json();
+
+        // Process Letters
+        if (bookData && bookData.letters) {
           const stories = {};
-
-          data.letters.forEach(item => {
-            const letter = item.l;
-            const word = item.word;
-            const scene = item.scene;
-            const fact = item.fact;
-
-            // Reconstruct full Pixar prompt dynamically from backend scene data
-            prompts[letter] = `Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\n${scene}.\n\nLetter "${letter}" for ${word}. Centered full-body or 3/4 body composition, clean soft pastel background with subtle ${word.toLowerCase()}-themed color wash, single large glowing letter "${letter}" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word "${word}" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted`;
-
-            stories[letter] = `${letter} is for ${word}. ${fact}`;
+          bookData.letters.forEach(item => {
+            stories[item.l] = `${item.l} is for ${item.word}. ${item.fact}`;
           });
 
-          setCustomBookPrompts(prev => {
-            // Keep user edits if any, otherwise merge
-            return { ...prompts, ...prev };
-          });
+          setCustomBookPrompts(prev => ({ ...promptsData.prompts, ...prev }));
           setBookStories(stories);
         }
+
+        // Process Numbers
+        if (numData) {
+          const stories = {};
+          numData.forEach(item => {
+            stories[item.l] = `Number ${item.l} is for ${item.word}. ${item.fact}`;
+          });
+
+          setCustomNumbersPrompts(prev => ({ ...promptsData.number_prompts, ...prev }));
+          setNumberStories(stories);
+        }
+
       } catch (err) {
         console.error("Failed to load book data from backend single source of truth:", err);
       }
     };
 
-    const loadNumbersData = async () => {
-      try {
-        const response = await fetch('/numbers-data');
-        const data = await response.json();
-        if (data) {
-          const prompts = {};
-          const stories = {};
-
-          data.forEach(item => {
-            const letter = item.l;
-            const word = item.word;
-            const scene = item.scene;
-            const fact = item.fact;
-
-            prompts[letter] = `Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\n${scene}.\n\nNumber "${letter}" for ${word}. Centered full-body or 3/4 body composition, clean soft pastel background with subtle ${word.toLowerCase()}-themed color wash, single large glowing number "${letter}" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word "${word}" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted`;
-
-            stories[letter] = `Number ${letter} is for ${word}. ${fact}`;
-          });
-
-          setCustomNumbersPrompts(prev => ({ ...prompts, ...prev }));
-          setNumberStories(stories);
-        }
-      } catch (err) {
-        console.error("Failed to load numbers data:", err);
-      }
-    };
-
-    loadLettersData();
-    loadNumbersData();
+    loadBookData();
   }, []);
 
   // Habit Chart Module States
@@ -205,6 +215,8 @@ export default function App() {
   const [deleteConfirmProjectId, setDeleteConfirmProjectId] = useState(null); // project id to confirm delete
   const [isDeletingProject, setIsDeletingProject] = useState(false);
 
+  const [selectedArtStyle, setSelectedArtStyle] = useState('Pixar');
+
 
   // Audio Previewing States
   const [playingBgm, setPlayingBgm] = useState(null); // 'calm_piano', etc., or null
@@ -265,7 +277,7 @@ export default function App() {
   });
 
   // Active generating indicators
-  const isGeneratingActiveImage = isBook ? isGenerating : isGeneratingHabitImage;
+  const isGeneratingActiveImage = (isBook || isNumbers) ? isGenerating : isGeneratingHabitImage;
   const isGeneratingAllActive = (isBook || isNumbers) ? generatingAll : generatingAllHabits;
 
   // Calculate how many active pages have been generated
@@ -526,10 +538,100 @@ export default function App() {
     }
   };
 
+  const handleApplyArtStyle = (e) => {
+    const styleName = e.target.value;
+    setSelectedArtStyle(styleName);
+    if (!styleName) return;
+
+    const styleObj = ART_STYLES.find(s => s.name === styleName);
+    if (styleObj) {
+      const applyStyleToPrompt = (prompt) => {
+        if (!prompt) return prompt;
+        let replaced = false;
+        let newPrompt = prompt;
+
+        // 1. Try to replace "STYLE: <anything>"
+        const styleRegex = /STYLE:[^\n]*/i;
+        if (styleRegex.test(newPrompt)) {
+          newPrompt = newPrompt.replace(styleRegex, `STYLE: ${styleObj.modifiers}`);
+          replaced = true;
+        }
+
+        // 2. Try to replace any known exact ART_STYLES modifiers
+        if (!replaced) {
+          for (const style of ART_STYLES) {
+            if (newPrompt.includes(style.modifiers)) {
+              newPrompt = newPrompt.replace(style.modifiers, styleObj.modifiers);
+              replaced = true;
+              break;
+            }
+          }
+        }
+
+        // 3. If not replaced, check for the specific hardcoded default Pixar strings in the prompt
+        if (!replaced) {
+          const defaultPixar1 = "Rendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.";
+          const defaultPixar2 = "Pixar-style 3D illustration, soft studio lighting, subsurface skin scattering, big expressive sparkly eyes";
+
+          if (newPrompt.includes(defaultPixar1)) {
+            newPrompt = newPrompt.replace(defaultPixar1, styleObj.modifiers);
+            replaced = true;
+          } else if (newPrompt.includes(defaultPixar2)) {
+            newPrompt = newPrompt.replace(defaultPixar2, styleObj.modifiers);
+            replaced = true;
+          }
+        }
+
+        return replaced ? newPrompt : (newPrompt.trim() ? newPrompt.trim() + ',\n' + styleObj.modifiers : styleObj.modifiers);
+      };
+
+      // Apply to all alphabet prompts
+      setCustomBookPrompts(prev => {
+        const next = { ...prev };
+        for (const key in next) {
+          next[key] = applyStyleToPrompt(next[key]);
+        }
+        return next;
+      });
+
+      // Apply to all numbers prompts
+      setCustomNumbersPrompts(prev => {
+        const next = { ...prev };
+        for (const key in next) {
+          next[key] = applyStyleToPrompt(next[key]);
+        }
+        return next;
+      });
+
+      // Apply to all habit prompts
+      setHabitPrompts(prev => {
+        const next = { ...prev };
+        for (const key in next) {
+          if (typeof next[key] === 'object' && next[key] !== null) {
+            next[key] = { ...next[key], prompt: applyStyleToPrompt(next[key].prompt) };
+          } else {
+            next[key] = applyStyleToPrompt(next[key]);
+          }
+        }
+        return next;
+      });
+
+      // Update current editable prompt
+      const newActivePrompt = applyStyleToPrompt(tempPromptText || activePromptText || '');
+      setTempPromptText(newActivePrompt);
+      if (isBook) setEditablePrompt(newActivePrompt);
+      else if (isNumbers) setEditablePrompt(newActivePrompt);
+      else setHabitEditablePrompt(newActivePrompt);
+    }
+  };
+
   const handlePromptChange = (val) => {
     if (isBook) {
       setEditablePrompt(val);
       setCustomBookPrompts(prev => ({ ...prev, [selectedLetter]: val }));
+    } else if (isNumbers) {
+      setEditablePrompt(val);
+      setCustomNumbersPrompts(prev => ({ ...prev, [selectedNumber]: val }));
     } else {
       setHabitEditablePrompt(val);
       setHabitPrompts(prev => {
@@ -549,6 +651,8 @@ export default function App() {
   const handleStoryChange = (pageKey, val) => {
     if (isBook) {
       setBookStories(prev => ({ ...prev, [pageKey]: val }));
+    } else if (isNumbers) {
+      setNumberStories(prev => ({ ...prev, [pageKey]: val }));
     } else {
       setHabitStoryTexts(prev => ({ ...prev, [pageKey]: val }));
       setHabitPrompts(prev => {
@@ -676,7 +780,26 @@ export default function App() {
 
       const isNum = isNumbers;
       const itemTypeLabel = isNum ? 'Number' : 'Letter';
-      const newPrompt = `Rithvin, a 3-year-old boy with warm golden brown skin, black short curly hair, dark brown eyes, chubby cute cheeks, cheerful joyful expression, wearing a bright red t-shirt and matching red shorts with small playful patterns, fully clothed.\n\nRendered as an ultra-realistic 3D Pixar-style cartoon character. Soft studio lighting, subsurface skin scattering, big expressive sparkly eyes, clean crisp render.\n\n${newScene}.\n\n${itemTypeLabel} "${activePageKey}" for ${data.word || customWord}. Centered full-body or 3/4 body composition, clean soft pastel background with subtle ${(data.word || customWord).toLowerCase()}-themed color wash, single large glowing ${itemTypeLabel.toLowerCase()} "${activePageKey}" visible as a prop or in background. Warm joyful lighting, storybook magic, ultra-detailed, Pixar animation quality, no clutter, no other characters, no text overlay, portrait orientation, A5 page size.\n\nThe word "${data.word || customWord}" should appear as the label text below the scene in english script — large, bold, rounded, child-friendly font style.\n\nNEGATIVE: ugly, deformed, extra fingers, extra limbs, mutated hands, poorly drawn face, scary, creepy, horror, adult face, realistic human photo, blurry, low quality, dark, violent, text overlay, watermark, logo, nsfw, nude, naked, shirtless, bare chest, bare skin, topless, undressed, exposed body, multiple children, crowded scene, busy background, cluttered, dark background, bad anatomy, out of frame, cropped, distorted`;
+      
+      const profile = { style: selectedArtStyle || 'Pixar-style illustration', lighting: 'soft studio lighting' };
+      const promptsRes = await fetch('/generate-prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile,
+          letter: activePageKey,
+          custom_word: data.word || customWord,
+          custom_scene: newScene
+        })
+      });
+      const promptsData = await promptsRes.json();
+      
+      let newPrompt = '';
+      if (isNum && promptsData.number_prompts) {
+        newPrompt = promptsData.number_prompts[activePageKey];
+      } else if (!isNum && promptsData.prompts) {
+        newPrompt = promptsData.prompts[activePageKey];
+      }
 
       const newStoryText = `${itemTypeLabel} ${activePageKey} is for ${data.word || customWord}. ${newFact}`;
 
@@ -1650,6 +1773,32 @@ export default function App() {
               )}
             </div>
 
+            {/* Art Style Selection */}
+            <div className="px-3 py-3 border-b border-slate-100">
+              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3" /> Art Style
+              </label>
+              <select
+                value={selectedArtStyle}
+                onChange={handleApplyArtStyle}
+                className="w-full py-1.5 px-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                title={selectedArtStyle ? `Type: ${ART_STYLES.find(s => s.name === selectedArtStyle)?.type}\nModifiers: ${ART_STYLES.find(s => s.name === selectedArtStyle)?.modifiers}` : 'Select an art style to apply'}
+              >
+                <option value="">-- Choose Art Style --</option>
+                {ART_STYLES.map(style => (
+                  <option key={style.name} value={style.name} title={`Type: ${style.type}\nModifiers: ${style.modifiers}`}>
+                    {style.name}
+                  </option>
+                ))}
+              </select>
+              {selectedArtStyle && (
+                <div className="mt-2 p-2 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-500 leading-tight">
+                  <span className="font-bold text-slate-700">Type:</span> {ART_STYLES.find(s => s.name === selectedArtStyle)?.type}<br />
+                  <span className="font-bold text-slate-700">Modifiers:</span> {ART_STYLES.find(s => s.name === selectedArtStyle)?.modifiers}
+                </div>
+              )}
+            </div>
+
             {/* Model Selection */}
             <div className="px-3 py-3 border-b border-slate-100">
               <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Model Selection</label>
@@ -2224,8 +2373,8 @@ export default function App() {
                   <button
                     onClick={() => setRightPanelTab('editor')}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rightPanelTab === 'editor'
-                        ? 'bg-white text-indigo-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
                       }`}
                   >
                     📝 Page Story &amp; Prompt Editor
@@ -2233,8 +2382,8 @@ export default function App() {
                   <button
                     onClick={() => setRightPanelTab('studio')}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rightPanelTab === 'studio'
-                        ? 'bg-white text-indigo-650 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-white text-indigo-650 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
                       }`}
                   >
                     🎙️ Audio &amp; Video Studio
