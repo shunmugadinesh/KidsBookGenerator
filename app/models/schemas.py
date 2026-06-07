@@ -108,6 +108,7 @@ class SaveProjectAssetsRequest(BaseModel):
     project_type: Optional[str] = "habit_book"
     stories: Dict[str, str]
     prompts: Dict[str, str]
+    voice_texts: Dict[str, str] = {}
     images: Dict[str, str]
     videos: Dict[str, str]
     full_video: Optional[str] = None

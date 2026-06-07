@@ -550,7 +550,7 @@ def tune_script_endpoint(request: TuneScriptRequest):
             for p in [",", ".", "?", "!", "—", '"']:
                 if p in text:
                     found.add(p)
-            return len(found) >= 3 and "..." in found
+            return len(found) >= 3 and ("..." in found or "—" in found or "," in found)
 
         max_attempts = 3
         for attempt in range(1, max_attempts + 1):
@@ -569,6 +569,8 @@ def tune_script_endpoint(request: TuneScriptRequest):
             )
             if _valid_punct(clean_text):
                 return {"status": "success", "tuned_text": clean_text}
+            else:
+                print(f"Retrying attempt: {attempt}")
             if attempt == max_attempts:
                 return {
                     "status": "partial_success",
@@ -983,6 +985,30 @@ def save_project_assets_endpoint(request: SaveProjectAssetsRequest, db: Session 
             image_prompt=prompt,
             image_path=img_path
         )
+        
+    # 2.5 Persist page texts to agent outputs (so they can be loaded per-page)
+    all_pages = set(request.stories.keys()).union(request.prompts.keys(), request.images.keys(), request.voice_texts.keys())
+    existing_outputs = {o.page_name: o for o in crud.get_agent_outputs_for_project(db, project_id)}
+    
+    for page in all_pages:
+        prompt = request.prompts.get(page, "")
+        story = request.stories.get(page, "")
+        voice = request.voice_texts.get(page, "")
+        
+        if page in existing_outputs:
+            crud.update_agent_output_edited(
+                db, 
+                output_id=existing_outputs[page].id, 
+                edited_output={"prompt": prompt, "story": story, "voice": voice}
+            )
+        else:
+            crud.save_agent_output(
+                db, 
+                project_id=project_id, 
+                page_name=page, 
+                agent_role="Manual Saver", 
+                raw_output={"prompt": prompt, "story": story, "voice": voice}
+            )
         
     # 3. Save individual page videos
     for page, vid_path in request.videos.items():

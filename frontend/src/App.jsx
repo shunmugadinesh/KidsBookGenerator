@@ -325,6 +325,9 @@ export default function App() {
 
   const handleSaveVoiceTextEdit = () => {
     setActiveVoiceTexts(prev => ({ ...prev, [activePageKey]: tempVoiceText }));
+    if (!isBook && !isNumbers && habitPrompts[activePageKey]?.output_id) {
+      updatePageAgentOutputInDb(habitPrompts[activePageKey].output_id, habitPrompts[activePageKey].prompt, habitStoryTexts[activePageKey], tempVoiceText);
+    }
   };
   const handleCancelVoiceTextEdit = () => {
     setTempVoiceText(activeVoiceTexts[activePageKey] ?? activeStories[activePageKey] ?? '');
@@ -438,6 +441,7 @@ export default function App() {
       const coreOutputs = {};
       const prompts = {};
       const stories = {};
+      const voiceTexts = {};
 
       outputs.forEach(o => {
         if (o.page_name === 'scene_plan') {
@@ -451,10 +455,14 @@ export default function App() {
             output_id: o.id
           };
           stories[o.page_name] = o.raw_output?.story || '';
+          if (o.raw_output?.voice) {
+            voiceTexts[o.page_name] = o.raw_output.voice;
+          }
         }
       });
 
       setAgentOutputs(coreOutputs);
+      setActiveVoiceTexts(voiceTexts);
 
       const isAlphabet = data.project_type === 'alphabet' || data.project_type === 'alphabet_book' || data.project_type === 'book';
       const isNumBook = data.project_type === 'numbers' || data.project_type === 'numbers_book';
@@ -523,14 +531,14 @@ export default function App() {
     }));
   };
 
-  const updatePageAgentOutputInDb = async (outputId, promptText, storyText) => {
+  const updatePageAgentOutputInDb = async (outputId, promptText, storyText, voiceText = '') => {
     try {
       await fetch('/update-review', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           output_id: outputId,
-          edited_output: { prompt: promptText, story: storyText }
+          edited_output: { prompt: promptText, story: storyText, voice: voiceText }
         })
       });
     } catch (err) {
@@ -638,7 +646,7 @@ export default function App() {
         const pageData = prev[selectedHabitPage];
         if (typeof pageData === 'object' && pageData !== null) {
           if (pageData.output_id) {
-            updatePageAgentOutputInDb(pageData.output_id, val, habitStoryTexts[selectedHabitPage] || '');
+            updatePageAgentOutputInDb(pageData.output_id, val, habitStoryTexts[selectedHabitPage] || '', activeVoiceTexts[selectedHabitPage] || '');
           }
           return { ...prev, [selectedHabitPage]: { ...pageData, prompt: val } };
         } else {
@@ -660,7 +668,7 @@ export default function App() {
         const currentPrompt = typeof pageData === 'object' && pageData !== null ? (pageData.prompt || '') : (pageData || '');
         if (typeof pageData === 'object' && pageData !== null) {
           if (pageData.output_id) {
-            updatePageAgentOutputInDb(pageData.output_id, currentPrompt, val);
+            updatePageAgentOutputInDb(pageData.output_id, currentPrompt, val, activeVoiceTexts[pageKey] || '');
           }
           return { ...prev, [pageKey]: { ...pageData, story: val } };
         }
@@ -739,6 +747,7 @@ export default function App() {
           project_type: isBook ? "alphabet" : isNumbers ? "numbers" : appMode,
           stories: storiesData,
           prompts: promptsData,
+          voice_texts: activeVoiceTexts,
           images: imagesData,
           videos: videosData,
           full_video: fullBookVideoUrl || null
@@ -1158,6 +1167,10 @@ export default function App() {
         contextRef.current.activePageKey === startingContext.activePageKey &&
         contextRef.current.currentProjectId === startingContext.currentProjectId) {
         setTempVoiceText(data.tuned_text);
+        setActiveVoiceTexts(prev => ({ ...prev, [startingContext.activePageKey]: data.tuned_text }));
+        if (!isBook && !isNumbers && habitPrompts[startingContext.activePageKey]?.output_id) {
+          updatePageAgentOutputInDb(habitPrompts[startingContext.activePageKey].output_id, habitPrompts[startingContext.activePageKey].prompt, habitStoryTexts[startingContext.activePageKey], data.tuned_text);
+        }
       } else {
         console.warn("Context changed during tuning. Result discarded to prevent overwriting.");
       }
@@ -1208,6 +1221,9 @@ export default function App() {
         if (!response.ok) throw new Error(data.detail || `Failed to tune script for ${pageKey}`);
 
         newVoiceTexts[pageKey] = data.tuned_text;
+        if (!isBook && !isNumbers && habitPrompts[pageKey]?.output_id) {
+          updatePageAgentOutputInDb(habitPrompts[pageKey].output_id, habitPrompts[pageKey].prompt, habitStoryTexts[pageKey], data.tuned_text);
+        }
       }
 
       setActiveVoiceTexts(newVoiceTexts);
